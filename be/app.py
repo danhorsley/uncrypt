@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, session
 import random
+from collections import Counter
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -25,45 +26,35 @@ def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
     return ''.join(reverse_mapping[char] if char in correctly_guessed else char
                    for char in encrypted_paragraph)
 
+def get_letter_frequency(paragraph):
+    return Counter(c for c in paragraph.upper() if c.isalpha())
+
 def start_game(paragraphs):
     paragraph = random.choice(paragraphs)
     mapping = generate_mapping()
     reverse_mapping = {v: k for k, v in mapping.items()}
     encrypted = encrypt_paragraph(paragraph, mapping)
+    frequency = get_letter_frequency(paragraph)
     session['game_state'] = {
         'original_paragraph': paragraph,
         'encrypted_paragraph': encrypted,
         'mapping': mapping,
         'reverse_mapping': reverse_mapping,
-        'correctly_guessed': [],  # Changed to list
+        'correctly_guessed': [],
         'mistakes': 0
     }
-    return encrypted
-
-def validate_guess(encrypted_letter, guessed_letter, reverse_mapping, correctly_guessed, mistakes):
-    if reverse_mapping[encrypted_letter] == guessed_letter:
-        if encrypted_letter not in correctly_guessed:  # Ensure no duplicates
-            correctly_guessed.append(encrypted_letter)
-        return True
-    return False
-
-def provide_hint(game_state):
-    all_encrypted = list(game_state['mapping'].values())
-    unmapped = [letter for letter in all_encrypted if letter not in game_state['correctly_guessed']]
-    if unmapped:
-        letter = random.choice(unmapped)
-        game_state['correctly_guessed'].append(letter)
-        game_state['mistakes'] += 1
-        return get_display(game_state['encrypted_paragraph'],
-                          game_state['correctly_guessed'],
-                          game_state['reverse_mapping']), game_state['mistakes']
-    return None, game_state['mistakes']
+    return encrypted, frequency
 
 @app.route('/start', methods=['GET'])
 def start():
-    encrypted = start_game(paragraphs)
-    return jsonify({'encrypted_paragraph': encrypted, 'mistakes': 0})
+    encrypted, frequency = start_game(paragraphs)
+    return jsonify({
+        'encrypted_paragraph': encrypted,
+        'mistakes': 0,
+        'letter_frequency': dict(frequency)  # Convert Counter to dict
+    })
 
+# Rest of routes unchanged...
 @app.route('/guess', methods=['POST'])
 def guess():
     data = request.get_json()
@@ -86,7 +77,7 @@ def guess():
     return jsonify({
         'display': display,
         'mistakes': game_state['mistakes'],
-        'correctly_guessed': game_state['correctly_guessed']  # Already a list
+        'correctly_guessed': game_state['correctly_guessed']
     })
 
 @app.route('/hint', methods=['POST'])
@@ -96,5 +87,24 @@ def hint():
     session['game_state'] = game_state
     return jsonify({'display': display, 'mistakes': mistakes})
 
+def validate_guess(encrypted_letter, guessed_letter, reverse_mapping, correctly_guessed, mistakes):
+    if reverse_mapping[encrypted_letter] == guessed_letter:
+        if encrypted_letter not in correctly_guessed:
+            correctly_guessed.append(encrypted_letter)
+        return True
+    return False
+
+def provide_hint(game_state):
+    all_encrypted = list(game_state['mapping'].values())
+    unmapped = [letter for letter in all_encrypted if letter not in game_state['correctly_guessed']]
+    if unmapped:
+        letter = random.choice(unmapped)
+        game_state['correctly_guessed'].append(letter)
+        game_state['mistakes'] += 1
+        return get_display(game_state['encrypted_paragraph'],
+                          game_state['correctly_guessed'],
+                          game_state['reverse_mapping']), game_state['mistakes']
+    return None, game_state['mistakes']
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5050)
