@@ -8,7 +8,7 @@ app.secret_key = 'your-secret-key'
 paragraphs = [
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
     "A JOURNEY OF A THOUSAND MILES BEGINS WITH A SINGLE STEP",
-    "CLEOPATRA ASCENDED THE THRONE AT 18 AFTER HER FATHERS DEATH",
+    "TEST",
     "LEONARDO DA VINCI WAS BORN IN 1452 NEAR FLORENCE",
     "ABRAHAM LINCOLN DELIVERED THE GETTYSBURG ADDRESS IN 1863"
 ]
@@ -26,15 +26,15 @@ def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
     return ''.join(reverse_mapping[char] if char in correctly_guessed else char
                    for char in encrypted_paragraph)
 
-def get_letter_frequency(paragraph):
-    return Counter(c for c in paragraph.upper() if c.isalpha())
+def get_letter_frequency(text):
+    return Counter(c for c in text.upper() if c.isalpha())
 
 def start_game(paragraphs):
     paragraph = random.choice(paragraphs)
     mapping = generate_mapping()
     reverse_mapping = {v: k for k, v in mapping.items()}
     encrypted = encrypt_paragraph(paragraph, mapping)
-    frequency = get_letter_frequency(paragraph)
+    encrypted_frequency = get_letter_frequency(encrypted)
     session['game_state'] = {
         'original_paragraph': paragraph,
         'encrypted_paragraph': encrypted,
@@ -43,18 +43,17 @@ def start_game(paragraphs):
         'correctly_guessed': [],
         'mistakes': 0
     }
-    return encrypted, frequency
+    return encrypted, encrypted_frequency
 
 @app.route('/start', methods=['GET'])
 def start():
-    encrypted, frequency = start_game(paragraphs)
+    encrypted, encrypted_frequency = start_game(paragraphs)
     return jsonify({
         'encrypted_paragraph': encrypted,
         'mistakes': 0,
-        'letter_frequency': dict(frequency)  # Convert Counter to dict
+        'letter_frequency': dict(encrypted_frequency)  # Encrypted letters' frequency
     })
 
-# Rest of routes unchanged...
 @app.route('/guess', methods=['POST'])
 def guess():
     data = request.get_json()

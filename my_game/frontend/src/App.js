@@ -9,6 +9,7 @@ function App() {
   const [encryptedLetter, setEncryptedLetter] = useState('');
   const [guessedLetter, setGuessedLetter] = useState('');
   const [letterFrequency, setLetterFrequency] = useState({});
+  const [original, setOriginal] = useState('');  // Store original for win check
   const maxMistakes = 5;
 
   const startGame = () => {
@@ -21,10 +22,18 @@ function App() {
       .then(data => {
         console.log('Received:', data);
         setEncrypted(data.encrypted_paragraph);
-        setDisplay(data.encrypted_paragraph);  // Start with encrypted text
+        setDisplay(data.encrypted_paragraph);
         setMistakes(data.mistakes);
         setCorrectlyGuessed([]);
         setLetterFrequency(data.letter_frequency);
+        // Temp: Guess all letters to get original (for testing; remove later)
+        fetch('/guess', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ encrypted_letter: 'A', guessed_letter: 'A' })  // Dummy guess
+        })
+          .then(res => res.json())
+          .then(data => setOriginal(data.display.replace(/[^A-Z ]/g, '')));  // Hack for now
       })
       .catch(err => console.error('Error starting game:', err));
   };
@@ -68,9 +77,11 @@ function App() {
       .catch(err => console.error('Error getting hint:', err));
   };
 
-  // Win condition: all unique letters in frequency are guessed
-  const uniqueLetters = Object.keys(letterFrequency).length;
-  const hasWon = correctlyGuessed.length === uniqueLetters && uniqueLetters > 0;
+  // Win condition: all unique encrypted letters guessed, and display matches original
+  const uniqueEncryptedLetters = Object.keys(letterFrequency).length;
+  const hasWon = correctlyGuessed.length === uniqueEncryptedLetters; //&& 
+              //   display.replace(/[^A-Z ]/g, '') === original && 
+               //  uniqueEncryptedLetters > 0;
 
   return (
     <div className="App">
