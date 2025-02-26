@@ -1,6 +1,6 @@
 .App {
   text-align: center;
-  font-family: Arial, sans-serif;
+  font-family: 'Courier New', Courier, monospace; /* Monospaced font */
   margin-top: 50px;
 }
 
@@ -8,8 +8,7 @@
   font-size: 1.5em;
   letter-spacing: 2px;
   margin: 10px 0;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  white-space: pre; /* Preserve spacing exactly */
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;

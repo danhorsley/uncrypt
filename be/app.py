@@ -23,8 +23,11 @@ def encrypt_paragraph(paragraph, mapping):
     return ''.join(mapping.get(char, char) for char in paragraph.upper())
 
 def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
-    return ''.join(reverse_mapping[char] if char in correctly_guessed else char
-                   for char in encrypted_paragraph)
+    # Build display: ? for unguessed letters, decrypted letter for guessed ones
+    return ''.join(
+        reverse_mapping[char] if char in correctly_guessed else '?' if char.isalpha() else char
+        for char in encrypted_paragraph
+    )
 
 def get_letter_frequency(text):
     return Counter(c for c in text.upper() if c.isalpha())
@@ -48,10 +51,12 @@ def start_game(paragraphs):
 @app.route('/start', methods=['GET'])
 def start():
     encrypted, encrypted_frequency = start_game(paragraphs)
+    display = get_display(encrypted, [], {})  # Initial display with all ?
     return jsonify({
         'encrypted_paragraph': encrypted,
         'mistakes': 0,
-        'letter_frequency': dict(encrypted_frequency)  # Encrypted letters' frequency
+        'letter_frequency': dict(encrypted_frequency),
+        'display': display  # Send initial ? display
     })
 
 @app.route('/guess', methods=['POST'])
