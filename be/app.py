@@ -23,7 +23,6 @@ def encrypt_paragraph(paragraph, mapping):
     return ''.join(mapping.get(char, char) for char in paragraph.upper())
 
 def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
-    # Build display: ? for unguessed letters, decrypted letter for guessed ones
     return ''.join(
         reverse_mapping[char] if char in correctly_guessed else '?' if char.isalpha() else char
         for char in encrypted_paragraph
@@ -32,12 +31,16 @@ def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
 def get_letter_frequency(text):
     return Counter(c for c in text.upper() if c.isalpha())
 
+def get_unique_letters(text):
+    return sorted(set(c for c in text.upper() if c.isalpha()))
+
 def start_game(paragraphs):
     paragraph = random.choice(paragraphs)
     mapping = generate_mapping()
     reverse_mapping = {v: k for k, v in mapping.items()}
     encrypted = encrypt_paragraph(paragraph, mapping)
     encrypted_frequency = get_letter_frequency(encrypted)
+    unique_original_letters = get_unique_letters(paragraph)
     session['game_state'] = {
         'original_paragraph': paragraph,
         'encrypted_paragraph': encrypted,
@@ -46,17 +49,20 @@ def start_game(paragraphs):
         'correctly_guessed': [],
         'mistakes': 0
     }
-    return encrypted, encrypted_frequency
+    return encrypted, encrypted_frequency, unique_original_letters
 
 @app.route('/start', methods=['GET'])
 def start():
-    encrypted, encrypted_frequency = start_game(paragraphs)
-    display = get_display(encrypted, [], {})  # Initial display with all ?
+    encrypted, encrypted_frequency, unique_original_letters = start_game(paragraphs)
+    display = get_display(encrypted, [], {})
+    # Extend frequency with 0 for unused letters
+    full_frequency = {chr(65 + i): encrypted_frequency.get(chr(65 + i), 0) for i in range(26)}
     return jsonify({
         'encrypted_paragraph': encrypted,
         'mistakes': 0,
-        'letter_frequency': dict(encrypted_frequency),
-        'display': display  # Send initial ? display
+        'letter_frequency': full_frequency,
+        'display': display,
+        'original_letters': unique_original_letters
     })
 
 @app.route('/guess', methods=['POST'])

@@ -1,6 +1,6 @@
 .App {
   text-align: center;
-  font-family: 'Courier New', Courier, monospace; /* Monospaced font */
+  font-family: 'Courier New', Courier, monospace;
   margin-top: 50px;
 }
 
@@ -8,7 +8,7 @@
   font-size: 1.5em;
   letter-spacing: 2px;
   margin: 10px 0;
-  white-space: pre; /* Preserve spacing exactly */
+  white-space: pre;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
@@ -22,12 +22,66 @@
   color: #000;
 }
 
-input {
-  margin: 0 10px;
-  padding: 5px;
-  width: 30px;
-  text-align: center;
-  text-transform: uppercase;
+.grids {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.encrypted-grid, .guess-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+  gap: 5px;
+  max-width: 250px;
+}
+
+.letter-cell {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  font-size: 1.2em;
+  background-color: #f9f9f9;
+  user-select: none;
+}
+
+.letter-cell:hover {
+  background-color: #e0e0e0;
+}
+
+.selected {
+  background-color: #007bff;
+  color: white;
+}
+
+.guessed {
+  background-color: #d3d3d3;
+  cursor: default;
+}
+
+.guessed:hover {
+  background-color: #d3d3d3;
+}
+
+.flash {
+  animation: flash 0.5s ease-out;
+}
+
+@keyframes flash {
+  0% { background-color: #00ff00; }
+  100% { background-color: #f9f9f9; }
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin: 10px 0;
 }
 
 button {
@@ -47,4 +101,30 @@ button:disabled {
 
 button:hover:not(:disabled) {
   background-color: #0056b3;
+}
+
+.sidebar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 600px;
+  margin: 20px auto;
+  gap: 5px;
+}
+
+.frequency-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20px;
+}
+
+.bar {
+  width: 10px;
+  background-color: #007bff;
+  transition: background-color 0.3s;
+}
+
+.bar.guessed {
+  background-color: #d3d3d3;
 }

@@ -1,70 +1,85 @@
-# Getting Started with Create React App
+# CryptoPuzzle
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+CryptoPuzzle is a daily decryption game inspired by classic cipher puzzles like those in *Covert Action*. Players decrypt encrypted paragraphs using a substitution cipher, guessing letter mappings with an intuitive grid-based UI. The game features a daily challenge, hints, and a retro workstation aesthetic, perfect for puzzle enthusiasts.
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+- **Frontend:** Built with React, providing an interactive UI for guessing letters via grids or keyboard input.
+- **Backend:** Powered by Flask (Python), handling encryption, validation, and game logic, running on port 5050.
+- **Features:**
+  - Daily encrypted paragraphs (currently 5 hardcoded, expandable to Wikipedia/Gutenberg).
+  - Click-to-select or keyboard-based letter guessing.
+  - Letter frequency sidebar (bars or numbers, toggleable).
+  - Hints (costing mistakes), win/loss states, and celebrations.
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Node.js** (v16 or later) for the frontend.
+- **Python 3.x** for the backend.
+- **npm** (included with Node.js).
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Installation
 
-### `npm test`
+### 1. Clone the Repository
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+git clone <your-repo-url>
+cd my-game
 
-### `npm run build`
+## 2. Set Up the Backend
+Navigate to the backend directory:
+bash
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+cd backend
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Install Python dependencies:
+bash
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+pip install -r requirements.txt
 
-### `npm run eject`
+Create requirements.txt if not present:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Flask==2.3.2
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Ensure Flask runs on port 5050 (see app.py).
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 3. Set Up the Frontend
+Navigate to the frontend directory:
+bash
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+cd ../frontend
 
-## Learn More
+Install JavaScript dependencies:
+bash
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+npm install
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Install additional packages:
+bash
 
-### Code Splitting
+npm install react-confetti
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 4. Configure Proxy
+Ensure package.json in frontend/ has:
+json
 
-### Analyzing the Bundle Size
+"proxy": "http://localhost:5050"
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Optionally, set up src/setupProxy.js for explicit proxying (see code for details).
 
-### Making a Progressive Web App
+# Running the Game
+## 1. Start the Backend
+From backend/:
+bash
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+python app.py
 
-### Advanced Configuration
+Verify it runs on http://localhost:5050.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## 2. Start the Frontend
+From frontend/:
+bash
 
-### Deployment
+npm start
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Open http://localhost:3000 in your browser.
 
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
