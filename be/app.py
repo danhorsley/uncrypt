@@ -57,13 +57,14 @@ def start():
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
     full_frequency = {chr(65 + i): encrypted_frequency.get(chr(65 + i), 0) for i in range(26)}
-    return jsonify({
-        'encrypted_paragraph': encrypted,
-        'mistakes': 0,
-        'letter_frequency': full_frequency,
-        'display': display,
-        'original_letters': unique_original_letters
-    })
+    ret = {'encrypted_paragraph': encrypted,
+            'mistakes': 0,
+            'letter_frequency': full_frequency,
+            'display': display,
+            'original_letters': unique_original_letters
+            }
+    #print(ret)
+    return jsonify(ret)
 
 @app.route('/guess', methods=['POST'])
 def guess():
@@ -110,12 +111,17 @@ def provide_hint(game_state):
     all_encrypted = list(game_state['mapping'].values())
     unmapped = [letter for letter in all_encrypted if letter not in game_state['correctly_guessed']]
     if unmapped:
-        letter = random.choice(unmapped)
+        used_n_mapped = [x for x in unmapped if x in game_state['encrypted_paragraph']]
+        letter = random.choice(used_n_mapped)
         game_state['correctly_guessed'].append(letter)
         game_state['mistakes'] += 1
-        return get_display(game_state['encrypted_paragraph'],
+        r1 = get_display(game_state['encrypted_paragraph'],
                           game_state['correctly_guessed'],
-                          game_state['reverse_mapping']), game_state['mistakes'],game_state['correctly_guessed']
+                          game_state['reverse_mapping'])
+        r2 = game_state['mistakes']
+        r3 = game_state['correctly_guessed']
+        #print(r1, r2, r3)
+        return r1, r2, r3
     return None, game_state['mistakes']
 
 if __name__ == '__main__':
