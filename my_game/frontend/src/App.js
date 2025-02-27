@@ -5,6 +5,9 @@ import Settings from './Settings';
 import { useAppContext } from './AppContext';
 import useSound from './SoundManager';
 import useKeyboardInput from './KeyboardController';
+import QuoteAttribution from './QuoteAttribution';
+import { createStructuralMatch } from './utils';
+import SaveButton from './SaveButton';
 
 function App() {
   // ==== CONTEXT AND APP SETTINGS ====
@@ -153,33 +156,33 @@ function App() {
   };
 
   // Create a structurally identical display text
-  const createStructuralMatch = () => {
-    if (!encrypted || !display) return { __html: '' };
+  // const createStructuralMatch = () => {
+  //   if (!encrypted || !display) return { __html: '' };
     
-    // Extract only the letters from the display text (removing spaces/punctuation)
-    const displayLetters = display.replace(/[^A-Z?]/g, '');
-    let letterIndex = 0;
-    let structuredDisplay = '';
+  //   // Extract only the letters from the display text (removing spaces/punctuation)
+  //   const displayLetters = display.replace(/[^A-Z?]/g, '');
+  //   let letterIndex = 0;
+  //   let structuredDisplay = '';
     
-    // Iterate through encrypted text and replace only the letters
-    for (let i = 0; i < encrypted.length; i++) {
-      const char = encrypted[i];
-      if (/[A-Z]/.test(char)) {
-        // If it's a letter, use the corresponding character from display
-        if (letterIndex < displayLetters.length) {
-          structuredDisplay += displayLetters[letterIndex];
-          letterIndex++;
-        } else {
-          structuredDisplay += '?';
-        }
-      } else {
-        // For non-letters (spaces, punctuation), keep the original character
-        structuredDisplay += char;
-      }
-    }
+  //   // Iterate through encrypted text and replace only the letters
+  //   for (let i = 0; i < encrypted.length; i++) {
+  //     const char = encrypted[i];
+  //     if (/[A-Z]/.test(char)) {
+  //       // If it's a letter, use the corresponding character from display
+  //       if (letterIndex < displayLetters.length) {
+  //         structuredDisplay += displayLetters[letterIndex];
+  //         letterIndex++;
+  //       } else {
+  //         structuredDisplay += '?';
+  //       }
+  //     } else {
+  //       // For non-letters (spaces, punctuation), keep the original character
+  //       structuredDisplay += char;
+  //     }
+  //   }
     
-    return { __html: structuredDisplay };
-  };
+  //   return { __html: structuredDisplay };
+  // };
 
   // ==== KEYBOARD INPUT HANDLERS ====
   const handleEncryptedSelect = (letter) => {
@@ -276,8 +279,13 @@ function App() {
         
         <div className="text-container">
           <pre className="encrypted">{encrypted || 'Loading...'}</pre>
-          <pre className="display" dangerouslySetInnerHTML={createStructuralMatch()}></pre>
+          <pre className="display" dangerouslySetInnerHTML={createStructuralMatch(encrypted, display)}></pre>
         </div>
+        <QuoteAttribution 
+            hasWon={hasWon} 
+            theme={settings.theme} 
+            textColor={settings.textColor} 
+          />
 
         <div className="grids">
           <div className="encrypted-grid">
@@ -293,6 +301,9 @@ function App() {
               </div>
             ))}
           </div>
+   
+
+  
           <div className="guess-grid">
             {originalLetters.map(letter => (
               <div
@@ -346,17 +357,18 @@ function App() {
           ))}
         </div>
 
-        {hasWon ? (
-          <div className="game-message">
-            <p>You won! All unique letters decrypted.</p>
-            <button onClick={startGame}>Play Again</button>
-          </div>
-        ) : mistakes >= maxMistakes ? (
-          <div className="game-message">
-            <p>Game Over! Too many mistakes.</p>
-            <button onClick={startGame}>Try Again</button>
-          </div>
-        ) : null}
+            {hasWon ? (
+      <div className="game-message">
+        <p>You won! All unique letters decrypted.</p>
+        <SaveButton hasWon={hasWon} playSound={playSound} />
+        <button onClick={startGame}>Play Again</button>
+      </div>
+    ) : mistakes >= maxMistakes ? (
+      <div className="game-message">
+        <p>Game Over! Too many mistakes.</p>
+        <button onClick={startGame}>Try Again</button>
+      </div>
+    ) : null}
       </div>
     </div>
   );
