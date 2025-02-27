@@ -429,7 +429,7 @@ button:hover:not(:disabled) {
   color: #0d6efd;
 }
 
-.App {
+.dark-theme .App {
   text-align: center;
   font-family: 'Courier New', Courier, monospace;
   max-width: 900px;
