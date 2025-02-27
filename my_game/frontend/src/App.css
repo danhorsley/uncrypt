@@ -187,6 +187,12 @@
   z-index: 1;
 }
 
+/* Dark theme display background */
+.dark-theme .display {
+  background-color: #444;
+  color: #f8f9fa;
+}
+
 @media (max-width: 768px) {
   .App {
     margin: 15px;
@@ -421,13 +427,15 @@ button:hover:not(:disabled) {
 .dark-theme .settings-icon:hover {
   background-color: #444;
   color: #0d6efd;
-}.App {
+}
+
+.App {
   text-align: center;
   font-family: 'Courier New', Courier, monospace;
   max-width: 900px;
   margin: 30px auto;
   padding: 20px;
-  background-color: white;
+  background-color: rgb(70, 68, 68);
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }

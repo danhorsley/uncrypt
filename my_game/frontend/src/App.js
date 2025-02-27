@@ -194,7 +194,7 @@ function App() {
   // Game view
   return (
     <div className={`App-container ${settings.theme === 'dark' ? 'dark-theme' : ''}`}>
-      <div className={`App ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`}>
+      <div className={`App ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`} >
         <div className="game-header">
           <h1 className="game-title">Decrypt the Puzzle</h1>
           <button className="settings-icon" onClick={showSettings} aria-label="Settings">
