@@ -142,20 +142,24 @@ function Settings({ currentSettings, onSave, onCancel }) {
         </div>
       </div>
       
-      {/* Speed Mode (Coming Soon) */}
-      <div className="settings-section disabled">
-        <h2>Speed Mode <span className="coming-soon">Coming Soon</span></h2>
-        <div className="settings-options">
-          <label className="settings-option disabled">
-            <input
-              type="checkbox"
-              disabled
-              checked={false}
-            />
-            <span className="option-label">Enable Speed Mode</span>
-          </label>
-        </div>
-      </div>
+{/* Speed Mode */}
+<div className="settings-section">
+  <h2>Speed Mode</h2>
+  <div className="settings-options">
+    <label className="settings-option">
+      <input
+        type="checkbox"
+        checked={settings.speedMode}
+        onChange={() => handleChange('speedMode', !settings.speedMode)}
+      />
+      <span className="option-label">Enable Keyboard Speed Mode</span>
+    </label>
+    <p className="settings-description">
+      When enabled, press a key to select an encrypted letter, then press another key to guess.
+      ESC cancels selection. Makes for faster gameplay.
+    </p>
+  </div>
+</div>
 
       {/* Action Buttons */}
       <div className="settings-actions">

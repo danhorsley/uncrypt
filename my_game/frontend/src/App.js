@@ -4,8 +4,10 @@ import Confetti from 'react-confetti';
 import Settings from './Settings';
 import { useAppContext } from './AppContext';
 import useSound from './SoundManager';
+import useKeyboardInput from './KeyboardController';
 
 function App() {
+  // ==== CONTEXT AND APP SETTINGS ====
   const { 
     settings, 
     updateSettings, 
@@ -15,6 +17,7 @@ function App() {
     maxMistakes 
   } = useAppContext();
 
+  // ==== STATE DECLARATIONS ====
   const [encrypted, setEncrypted] = useState('');
   const [display, setDisplay] = useState('');
   const [mistakes, setMistakes] = useState(0);
@@ -25,9 +28,22 @@ function App() {
   const [guessedMappings, setGuessedMappings] = useState({});
   const [originalLetters, setOriginalLetters] = useState([]);
 
+  // ==== DERIVED VALUES AND CALCULATIONS ====
+  // Get unique encrypted letters that actually appear in the encrypted text
+  const encryptedLetters = [...new Set(encrypted.match(/[A-Z]/g) || [])];
+  const uniqueEncryptedLetters = encryptedLetters.length;
+  
+  // Calculate if all encrypted letters have been correctly guessed
+  const hasWon = uniqueEncryptedLetters > 0 && correctlyGuessed.length >= uniqueEncryptedLetters;
+  
+  // Get used letters for display
+  const usedGuessLetters = Object.values(guessedMappings);
+
+  // ==== UTILITY FUNCTIONS ====
   // Initialize sound manager
   const { playSound } = useSound();
 
+  // ==== GAME FUNCTIONS ====
   const startGame = () => {
     fetch('/start')
       .then(res => {
@@ -48,10 +64,6 @@ function App() {
       })
       .catch(err => console.error('Error starting game:', err));
   };
-
-  useEffect(() => {
-    startGame();
-  }, []);
 
   const handleEncryptedClick = (letter) => {
     if (!correctlyGuessed.includes(letter)) {
@@ -138,20 +150,7 @@ function App() {
         }
       })
       .catch(err => console.error('Error getting hint:', err));
-
   };
-
-  // Keyboard input handler
-  useEffect(() => {
-    const handleKeyPress = (event) => {
-      if (selectedEncrypted && /[A-Z]/i.test(event.key)) {
-        submitGuess(event.key);
-        event.preventDefault();
-      }
-    };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedEncrypted]);
 
   // Create a structurally identical display text
   const createStructuralMatch = () => {
@@ -182,14 +181,39 @@ function App() {
     return { __html: structuredDisplay };
   };
 
-  // Get unique encrypted letters that actually appear in the encrypted text
-  const encryptedLetters = [...new Set(encrypted.match(/[A-Z]/g) || [])];
-  const uniqueEncryptedLetters = encryptedLetters.length;
+  // ==== KEYBOARD INPUT HANDLERS ====
+  const handleEncryptedSelect = (letter) => {
+    setSelectedEncrypted(letter);
+    if (letter) {
+      playSound('keyclick');
+    }
+  };
   
-  // Calculate if all encrypted letters have been correctly guessed
-  const hasWon = uniqueEncryptedLetters > 0 && correctlyGuessed.length >= uniqueEncryptedLetters;
-  
-  // Debug win condition
+  const handleGuessSubmit = (guessedLetter) => {
+    if (selectedEncrypted) {
+      submitGuess(guessedLetter);
+    }
+  };
+
+  // ==== EFFECTS ====
+  // Initialize game on component mount
+  useEffect(() => {
+    startGame();
+  }, []);
+
+  // Keyboard input handling
+  useKeyboardInput({
+    enabled: !hasWon && mistakes < maxMistakes, // Disable when game is over
+    speedMode: settings.speedMode,
+    encryptedLetters: encryptedLetters,
+    originalLetters: originalLetters,
+    selectedEncrypted: selectedEncrypted,
+    onEncryptedSelect: handleEncryptedSelect,
+    onGuessSubmit: handleGuessSubmit,
+    playSound: playSound
+  });
+
+  // Play win sound when game is won
   useEffect(() => {
     if (hasWon) {
       playSound('win');
@@ -200,14 +224,6 @@ function App() {
       hasWon: hasWon
     });
   }, [correctlyGuessed, uniqueEncryptedLetters, hasWon]);
-
-  const usedGuessLetters = Object.values(guessedMappings);
-
-  // Handle settings update
-  const handleSaveSettings = (newSettings) => {
-    updateSettings(newSettings);
-    showGame();
-  };
 
   // Apply theme effect - this runs for both game and settings views
   useEffect(() => {
@@ -220,6 +236,14 @@ function App() {
     }
   }, [settings.theme]);
 
+  // ==== SETTINGS HANDLERS ====
+  // Handle settings update
+  const handleSaveSettings = (newSettings) => {
+    updateSettings(newSettings);
+    showGame();
+  };
+
+  // ==== CONDITIONAL RENDERING ====
   // When in settings view
   if (currentView === 'settings') {
     return (
@@ -233,6 +257,7 @@ function App() {
     );
   }
 
+  // ==== MAIN RENDER ====
   // Game view
   return (
     <div className={`App-container ${settings.theme === 'dark' ? 'dark-theme' : ''}`}>
@@ -247,82 +272,93 @@ function App() {
           </button>
         </div>
 
-      {hasWon && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} />}
-      
-      <div className="text-container">
-        <pre className="encrypted">{encrypted || 'Loading...'}</pre>
-        <pre className="display" dangerouslySetInnerHTML={createStructuralMatch()}></pre>
-      </div>
-
-      <div className="grids">
-        <div className="encrypted-grid">
-          {encryptedLetters.map(letter => (
-            <div
-              key={letter}
-              className={`letter-cell ${selectedEncrypted === letter ? 'selected' : ''} ${
-                correctlyGuessed.includes(letter) ? 'guessed' : ''
-              } ${lastCorrectGuess === letter ? 'flash' : ''}`}
-              onClick={() => handleEncryptedClick(letter)}
-            >
-              {letter}
-            </div>
-          ))}
+        {hasWon && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} />}
+        
+        <div className="text-container">
+          <pre className="encrypted">{encrypted || 'Loading...'}</pre>
+          <pre className="display" dangerouslySetInnerHTML={createStructuralMatch()}></pre>
         </div>
-        <div className="guess-grid">
-          {originalLetters.map(letter => (
-            <div
-              key={letter}
-              className={`letter-cell ${usedGuessLetters.includes(letter) ? 'guessed' : ''}`}
-              onClick={() => handleGuessClick(letter)}
-            >
-              {letter}
-            </div>
-          ))}
-        </div>
-      </div>
 
-      <div className="controls">
-        <p>Mistakes: {mistakes}/{maxMistakes}</p>
-        <button 
-          onClick={handleHint} 
-          disabled={mistakes >= maxMistakes - 1}
-          className="hint-button"
-        >
-          Hint (Costs 1 Mistake)
-        </button>
-      </div>
-
-      <div className="sidebar">
-        {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => (
-          <div key={letter} className="frequency-bar">
-            <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>{letter}</span>
-            {settings.frequencyDisplay === 'numeric' ? (
-              <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>
-                {letterFrequency[letter] || 0}
-              </span>
-            ) : (
+        <div className="grids">
+          <div className="encrypted-grid">
+            {encryptedLetters.map(letter => (
               <div
-                className={`bar ${usedGuessLetters.includes(letter) ? 'guessed' : ''}`}
-                style={{ height: `${(letterFrequency[letter] || 0) * 10}px` }}
-              ></div>
-            )}
+                key={letter}
+                className={`letter-cell ${selectedEncrypted === letter ? 'selected' : ''} ${
+                  correctlyGuessed.includes(letter) ? 'guessed' : ''
+                } ${lastCorrectGuess === letter ? 'flash' : ''}`}
+                onClick={() => handleEncryptedClick(letter)}
+              >
+                {letter}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+          <div className="guess-grid">
+            {originalLetters.map(letter => (
+              <div
+                key={letter}
+                className={`letter-cell ${usedGuessLetters.includes(letter) ? 'guessed' : ''}`}
+                onClick={() => handleGuessClick(letter)}
+              >
+                {letter}
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {hasWon ? (
-        <div className="game-message">
-          <p>You won! All unique letters decrypted.</p>
-          <button onClick={startGame}>Play Again</button>
+        <div className="controls">
+          <p>Mistakes: {mistakes}/{maxMistakes}</p>
+          <button 
+            onClick={handleHint} 
+            disabled={mistakes >= maxMistakes - 1}
+            className="hint-button"
+          >
+            Hint (Costs 1 Mistake)
+          </button>
         </div>
-      ) : mistakes >= maxMistakes ? (
-        <div className="game-message">
-          <p>Game Over! Too many mistakes.</p>
-          <button onClick={startGame}>Try Again</button>
+
+        {settings.speedMode && (
+          <div className="keyboard-hint">
+            <p>
+              Keyboard Speed Mode: 
+              {!selectedEncrypted 
+                ? "Press a letter key to select from the encrypted grid." 
+                : `Selected ${selectedEncrypted} - Press a letter key to make a guess or ESC to cancel.`}
+            </p>
+          </div>
+        )}
+
+        <div className="sidebar">
+          {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => (
+            <div key={letter} className="frequency-bar">
+              <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>{letter}</span>
+              {settings.frequencyDisplay === 'numeric' ? (
+                <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>
+                  {letterFrequency[letter] || 0}
+                </span>
+              ) : (
+                <div
+                  className={`bar ${usedGuessLetters.includes(letter) ? 'guessed' : ''}`}
+                  style={{ height: `${(letterFrequency[letter] || 0) * 10}px` }}
+                ></div>
+              )}
+            </div>
+          ))}
         </div>
-      ) : null}
+
+        {hasWon ? (
+          <div className="game-message">
+            <p>You won! All unique letters decrypted.</p>
+            <button onClick={startGame}>Play Again</button>
+          </div>
+        ) : mistakes >= maxMistakes ? (
+          <div className="game-message">
+            <p>Game Over! Too many mistakes.</p>
+            <button onClick={startGame}>Try Again</button>
+          </div>
+        ) : null}
+      </div>
     </div>
-  </div>
   );
 }
 

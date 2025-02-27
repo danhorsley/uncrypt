@@ -9,7 +9,8 @@ const defaultSettings = {
   theme: 'light',             // 'light' or 'dark'
   difficulty: 'normal',       // 'easy', 'normal', or 'hard'
   textColor: 'default',       // 'default', 'scifi-blue', or 'retro-green'
-  speedMode: false            // placeholder for future implementation
+  speedMode: false,           // Add this line - enable keyboard speed mode
+  // other settings...
 };
 
 // Get max mistakes based on difficulty
