@@ -90,12 +90,14 @@ def guess():
         'correctly_guessed': game_state['correctly_guessed']
     })
 
+
 @app.route('/hint', methods=['POST'])
 def hint():
     game_state = session['game_state']
-    display, mistakes = provide_hint(game_state)
+    display, mistakes, correctly_guessed = provide_hint(game_state)
     session['game_state'] = game_state
-    return jsonify({'display': display, 'mistakes': mistakes})
+    return jsonify({'display': display, 'mistakes': mistakes, 'correctly_guessed': correctly_guessed})
+
 
 def validate_guess(encrypted_letter, guessed_letter, reverse_mapping, correctly_guessed, mistakes):
     if reverse_mapping[encrypted_letter] == guessed_letter:
@@ -113,7 +115,7 @@ def provide_hint(game_state):
         game_state['mistakes'] += 1
         return get_display(game_state['encrypted_paragraph'],
                           game_state['correctly_guessed'],
-                          game_state['reverse_mapping']), game_state['mistakes']
+                          game_state['reverse_mapping']), game_state['mistakes'],game_state['correctly_guessed']
     return None, game_state['mistakes']
 
 if __name__ == '__main__':

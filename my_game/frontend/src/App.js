@@ -97,7 +97,10 @@ function App() {
       .then(data => {
         setDisplay(data.display);
         setMistakes(data.mistakes);
-        setCorrectlyGuessed(data.correctly_guessed); // Make sure hint updates correctly guessed letters
+        if (data.correctly_guessed) {
+          // Update correctlyGuessed with the server's response
+          setCorrectlyGuessed(data.correctly_guessed);
+        }
       })
       .catch(err => console.error('Error getting hint:', err));
   };
