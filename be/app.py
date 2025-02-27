@@ -134,7 +134,7 @@ def provide_hint(game_state):
                           game_state['reverse_mapping'])
         r2 = game_state['mistakes']
         r3 = game_state['correctly_guessed']
-        #print(r1, r2, r3)
+        print(r1, r2, r3)
         return r1, r2, r3
     return None, game_state['mistakes']
 

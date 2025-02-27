@@ -3,6 +3,7 @@ import './App.css';
 import Confetti from 'react-confetti';
 import Settings from './Settings';
 import { useAppContext } from './AppContext';
+import useSound from './SoundManager';
 
 function App() {
   const { 
@@ -24,6 +25,9 @@ function App() {
   const [guessedMappings, setGuessedMappings] = useState({});
   const [originalLetters, setOriginalLetters] = useState([]);
 
+  // Initialize sound manager
+  const { playSound } = useSound();
+
   const startGame = () => {
     fetch('/start')
       .then(res => {
@@ -40,6 +44,7 @@ function App() {
         setLastCorrectGuess(null);
         setGuessedMappings({});
         setOriginalLetters(data.original_letters);
+        playSound('keyclick');
       })
       .catch(err => console.error('Error starting game:', err));
   };
@@ -51,6 +56,7 @@ function App() {
   const handleEncryptedClick = (letter) => {
     if (!correctlyGuessed.includes(letter)) {
       setSelectedEncrypted(letter);
+      playSound('keyclick');
     }
   };
 
@@ -76,12 +82,16 @@ function App() {
         setCorrectlyGuessed(data.correctly_guessed);
         if (data.correctly_guessed.includes(selectedEncrypted) && 
             !correctlyGuessed.includes(selectedEncrypted)) {
+          playSound('correct');
           setLastCorrectGuess(selectedEncrypted);
           setGuessedMappings(prev => ({
             ...prev,
             [selectedEncrypted]: guessedLetter.toUpperCase()
           }));
           setTimeout(() => setLastCorrectGuess(null), 500);
+        }
+        else if (data.mistakes > mistakes) {
+          playSound('incorrect');
         }
         setSelectedEncrypted(null);
       })
@@ -95,14 +105,40 @@ function App() {
     })
       .then(res => res.json())
       .then(data => {
+        // Store old state for comparison
+        const oldCorrectlyGuessed = [...correctlyGuessed];
+        
+        // Update state with server response
         setDisplay(data.display);
         setMistakes(data.mistakes);
+        
         if (data.correctly_guessed) {
-          // Update correctlyGuessed with the server's response
+          // Find which letter is newly added (the hint)
+          const newGuessedLetters = data.correctly_guessed.filter(
+            letter => !oldCorrectlyGuessed.includes(letter)
+          );
+          
+          // For each newly guessed letter, update the mapping
+          newGuessedLetters.forEach(encryptedLetter => {
+            // Find this letter in the encrypted text and get the corresponding character in display
+            for (let i = 0; i < encrypted.length; i++) {
+              if (encrypted[i] === encryptedLetter && data.display[i] !== '?') {
+                // Add to guessedMappings
+                setGuessedMappings(prev => ({
+                  ...prev,
+                  [encryptedLetter]: data.display[i]
+                }));
+                break;
+              }
+            }
+          });
+          
+          // Update correctlyGuessed state
           setCorrectlyGuessed(data.correctly_guessed);
         }
       })
       .catch(err => console.error('Error getting hint:', err));
+
   };
 
   // Keyboard input handler
@@ -155,6 +191,9 @@ function App() {
   
   // Debug win condition
   useEffect(() => {
+    if (hasWon) {
+      playSound('win');
+    } 
     console.log('Win check:', { 
       uniqueLetters: uniqueEncryptedLetters, 
       correctlyGuessedLength: correctlyGuessed.length,
