@@ -1,6 +1,6 @@
-# CryptoPuzzle
+# Decrypto
 
-CryptoPuzzle is a daily decryption game inspired by classic cipher puzzles like those in *Covert Action*. Players decrypt encrypted paragraphs using a substitution cipher, guessing letter mappings with an intuitive grid-based UI. The game features a daily challenge, hints, and a retro workstation aesthetic, perfect for puzzle enthusiasts.
+Decrypto is a daily decryption game inspired by classic cipher puzzles like those in *Covert Action*. Players decrypt encrypted paragraphs using a substitution cipher, guessing letter mappings with an intuitive grid-based UI. The game features a daily challenge, hints, and a retro workstation aesthetic, perfect for puzzle enthusiasts.
 
 ## Overview
 
