@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import Confetti from 'react-confetti';
+import Settings from './Settings';
+import { useAppContext } from './AppContext';
 
 function App() {
+  const { 
+    settings, 
+    updateSettings, 
+    currentView, 
+    showSettings, 
+    showGame,
+    maxMistakes 
+  } = useAppContext();
+
   const [encrypted, setEncrypted] = useState('');
   const [display, setDisplay] = useState('');
   const [mistakes, setMistakes] = useState(0);
@@ -12,8 +23,6 @@ function App() {
   const [letterFrequency, setLetterFrequency] = useState({});
   const [guessedMappings, setGuessedMappings] = useState({});
   const [originalLetters, setOriginalLetters] = useState([]);
-  const [showNumbers, setShowNumbers] = useState(false); // Toggle for numbers vs. bars
-  const maxMistakes = 5;
 
   const startGame = () => {
     fetch('/start')
@@ -88,6 +97,7 @@ function App() {
       .then(data => {
         setDisplay(data.display);
         setMistakes(data.mistakes);
+        setCorrectlyGuessed(data.correctly_guessed); // Make sure hint updates correctly guessed letters
       })
       .catch(err => console.error('Error getting hint:', err));
   };
@@ -95,29 +105,112 @@ function App() {
   // Keyboard input handler
   useEffect(() => {
     const handleKeyPress = (event) => {
-      console.log('Key pressed:', event.key); // Debug key detection
-      if (selectedEncrypted && /[A-Z]/.test(event.key.toUpperCase())) {
-        submitGuess(event.key.toUpperCase());
+      if (selectedEncrypted && /[A-Z]/i.test(event.key)) {
+        submitGuess(event.key);
         event.preventDefault();
       }
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedEncrypted, submitGuess]);
+  }, [selectedEncrypted]);
 
-  const uniqueEncryptedLetters = Object.keys(letterFrequency).length;
-  console.log('Win check:', { uniqueEncryptedLetters, correctlyGuessedLength: correctlyGuessed.length }); // Debug win
-  const hasWon = correctlyGuessed.length === uniqueEncryptedLetters;
+  // Create a structurally identical display text
+  const createStructuralMatch = () => {
+    if (!encrypted || !display) return { __html: '' };
+    
+    // Extract only the letters from the display text (removing spaces/punctuation)
+    const displayLetters = display.replace(/[^A-Z?]/g, '');
+    let letterIndex = 0;
+    let structuredDisplay = '';
+    
+    // Iterate through encrypted text and replace only the letters
+    for (let i = 0; i < encrypted.length; i++) {
+      const char = encrypted[i];
+      if (/[A-Z]/.test(char)) {
+        // If it's a letter, use the corresponding character from display
+        if (letterIndex < displayLetters.length) {
+          structuredDisplay += displayLetters[letterIndex];
+          letterIndex++;
+        } else {
+          structuredDisplay += '?';
+        }
+      } else {
+        // For non-letters (spaces, punctuation), keep the original character
+        structuredDisplay += char;
+      }
+    }
+    
+    return { __html: structuredDisplay };
+  };
 
+  // Get unique encrypted letters that actually appear in the encrypted text
   const encryptedLetters = [...new Set(encrypted.match(/[A-Z]/g) || [])];
+  const uniqueEncryptedLetters = encryptedLetters.length;
+  
+  // Calculate if all encrypted letters have been correctly guessed
+  const hasWon = uniqueEncryptedLetters > 0 && correctlyGuessed.length >= uniqueEncryptedLetters;
+  
+  // Debug win condition
+  useEffect(() => {
+    console.log('Win check:', { 
+      uniqueLetters: uniqueEncryptedLetters, 
+      correctlyGuessedLength: correctlyGuessed.length,
+      hasWon: hasWon
+    });
+  }, [correctlyGuessed, uniqueEncryptedLetters, hasWon]);
+
   const usedGuessLetters = Object.values(guessedMappings);
 
+  // Handle settings update
+  const handleSaveSettings = (newSettings) => {
+    updateSettings(newSettings);
+    showGame();
+  };
+
+  // Apply theme effect - this runs for both game and settings views
+  useEffect(() => {
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark-theme');
+      document.body.classList.add('dark-theme');
+    } else {
+      document.documentElement.classList.remove('dark-theme');
+      document.body.classList.remove('dark-theme');
+    }
+  }, [settings.theme]);
+
+  // When in settings view
+  if (currentView === 'settings') {
+    return (
+      <div className={`App-container ${settings.theme === 'dark' ? 'dark-theme' : ''}`}>
+        <Settings 
+          currentSettings={settings} 
+          onSave={handleSaveSettings} 
+          onCancel={showGame} 
+        />
+      </div>
+    );
+  }
+
+  // Game view
   return (
-    <div className="App">
-      <h1>Decrypt the Puzzle</h1>
+    <div className={`App-container ${settings.theme === 'dark' ? 'dark-theme' : ''}`}>
+      <div className={`App ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`}>
+        <div className="game-header">
+          <h1 className="game-title">Decrypt the Puzzle</h1>
+          <button className="settings-icon" onClick={showSettings} aria-label="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+
       {hasWon && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} />}
-      <p className="encrypted">{encrypted || 'Loading...'}</p>
-      <p className="display">{display || 'Loading...'}</p>
+      
+      <div className="text-container">
+        <pre className="encrypted">{encrypted || 'Loading...'}</pre>
+        <pre className="display" dangerouslySetInnerHTML={createStructuralMatch()}></pre>
+      </div>
 
       <div className="grids">
         <div className="encrypted-grid">
@@ -147,11 +240,12 @@ function App() {
       </div>
 
       <div className="controls">
-        <button onClick={() => setShowNumbers(!showNumbers)}>
-          {showNumbers ? 'Switch to Bars' : 'Switch to Numbers'}
-        </button>
         <p>Mistakes: {mistakes}/{maxMistakes}</p>
-        <button onClick={handleHint} disabled={mistakes >= maxMistakes - 1}>
+        <button 
+          onClick={handleHint} 
+          disabled={mistakes >= maxMistakes - 1}
+          className="hint-button"
+        >
           Hint (Costs 1 Mistake)
         </button>
       </div>
@@ -160,7 +254,7 @@ function App() {
         {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => (
           <div key={letter} className="frequency-bar">
             <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>{letter}</span>
-            {showNumbers ? (
+            {settings.frequencyDisplay === 'numeric' ? (
               <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>
                 {letterFrequency[letter] || 0}
               </span>
@@ -175,17 +269,18 @@ function App() {
       </div>
 
       {hasWon ? (
-        <div>
+        <div className="game-message">
           <p>You won! All unique letters decrypted.</p>
           <button onClick={startGame}>Play Again</button>
         </div>
       ) : mistakes >= maxMistakes ? (
-        <div>
+        <div className="game-message">
           <p>Game Over! Too many mistakes.</p>
           <button onClick={startGame}>Try Again</button>
         </div>
       ) : null}
     </div>
+  </div>
   );
 }
 
