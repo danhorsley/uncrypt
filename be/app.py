@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, session
 import random
 from collections import Counter
+import csv
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -12,6 +13,18 @@ paragraphs = [
     "LEONARDO DA VINCI WAS BORN IN 1452 NEAR FLORENCE",
     "ABRAHAM LINCOLN DELIVERED THE GETTYSBURG ADDRESS IN 1863"
 ]
+
+class QuoteLoader:
+    def __init__(self, csv_path):
+        """Load quotes from CSV into memory once."""
+        self.quotes = []
+        with open(csv_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            self.quotes = [row["Quote"] for row in reader]  # Extract only the Quote column
+    
+    def get_random_quote(self):
+        """Return a random quote from the loaded list."""
+        return random.choice(self.quotes)
 
 def generate_mapping():
     alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -35,7 +48,8 @@ def get_unique_letters(text):
     return sorted(set(c for c in text.upper() if c.isalpha()))
 
 def start_game(paragraphs):
-    paragraph = random.choice(paragraphs)
+    #paragraph = random.choice(paragraphs)
+    paragraph = QuoteLoader('quotes.csv').get_random_quote()
     mapping = generate_mapping()
     reverse_mapping = {v: k for k, v in mapping.items()}
     encrypted = encrypt_paragraph(paragraph, mapping)
