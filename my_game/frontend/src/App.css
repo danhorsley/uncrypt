@@ -350,8 +350,11 @@ button:hover:not(:disabled) {
   border-radius: 1px;
 }
 
+/* Guessed state for the bar */
 .bar.guessed {
   background-color: #6c757d;
+  box-shadow: none;
+  opacity: 0.6;
 }
 
 /* Dark Theme Styles */
@@ -784,4 +787,42 @@ button:hover:not(:disabled) {
   background-color: #0a3622;
   color: #00ff41;
   text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
+}
+
+.text-scifi-blue .bar:not(.guessed) {
+  background-color: #4cc9f0;
+  box-shadow: 0 0 5px rgba(76, 201, 240, 0.3);
+}
+
+.text-retro-green .bar:not(.guessed) {
+  background-color: #00ff41;
+  box-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+}
+
+.text-scifi-blue .frequency-bar span:not(.guessed) {
+  color: #4cc9f0;
+  text-shadow: 0 0 2px rgba(76, 201, 240, 0.5);
+}
+
+.text-retro-green .frequency-bar span:not(.guessed) {
+  color: #00ff41;
+  text-shadow: 0 0 2px rgba(0, 255, 65, 0.5);
+}
+
+.frequency-bar span.guessed {
+  color: #444;   /* Darker gray for better readability in light mode */
+  opacity: 0.9;  /* Increase opacity for better visibility */
+  text-shadow: none;
+}
+
+.frequency-bar * {
+  transition: all 0.3s ease;
+}
+
+.dark-theme .frequency-bar span.guessed {
+  color: #06095f;   /* Light gray for better readability in dark mode */
+}
+
+.frequency-bar span {
+  font-weight: 600; /* Making it slightly bolder */
 }

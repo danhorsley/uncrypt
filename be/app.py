@@ -19,7 +19,7 @@ class QuoteLoader:
     def __init__(self, csv_path):
         """Load quotes from CSV into memory once."""
         self.quotes = []
-        with open(csv_path, 'r', encoding='utf-8') as csvfile:
+        with open(csv_path, 'r', encoding='latin-1') as csvfile:
             reader = csv.DictReader(csvfile)
             self.quotes = [row for row in reader]  # Store the full row
     
@@ -55,7 +55,8 @@ def get_unique_letters(text):
 
 def start_game():
     # Initialize the quote loader
-    quote_loader = QuoteLoader('quotes.csv')
+    #quote_loader = QuoteLoader('quotes.csv')
+    quote_loader = QuoteLoader('curated.csv')
     quote_data = quote_loader.get_random_quote()
     
     paragraph = quote_data["Quote"]

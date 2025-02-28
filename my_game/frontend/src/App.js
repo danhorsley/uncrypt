@@ -339,23 +339,33 @@ function App() {
           </div>
         )}
 
-        <div className="sidebar">
-          {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => (
-            <div key={letter} className="frequency-bar">
-              <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>{letter}</span>
-              {settings.frequencyDisplay === 'numeric' ? (
-                <span className={usedGuessLetters.includes(letter) ? 'guessed' : ''}>
-                  {letterFrequency[letter] || 0}
-                </span>
-              ) : (
-                <div
-                  className={`bar ${usedGuessLetters.includes(letter) ? 'guessed' : ''}`}
-                  style={{ height: `${(letterFrequency[letter] || 0) * 10}px` }}
-                ></div>
-              )}
-            </div>
-          ))}
-        </div>
+          <div className="sidebar">
+            {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => {
+              // Check if this letter has been guessed (appears in guessedMappings values)
+              const isGuessed = Object.values(guessedMappings).includes(letter);
+              
+              return (
+                <div key={letter} className="frequency-bar">
+                  {/* Letter display */}
+                  <span className={isGuessed ? 'guessed' : ''}>{letter}</span>
+                  
+                  {/* Frequency display */}
+                  {settings.frequencyDisplay === 'numeric' ? (
+                    // Numeric display
+                    <span className={isGuessed ? 'guessed' : ''}>
+                      {letterFrequency[letter] || 0}
+                    </span>
+                  ) : (
+                    // Bar display
+                    <div
+                      className={`bar ${isGuessed ? 'guessed' : ''}`}
+                      style={{ height: `${(letterFrequency[letter] || 0) * 10}px` }}
+                    ></div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
             {hasWon ? (
       <div className="game-message">
