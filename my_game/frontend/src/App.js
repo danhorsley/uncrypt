@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import Confetti from 'react-confetti';
+//import Confetti from 'react-confetti';
 import Settings from './Settings';
 import { useAppContext } from './AppContext';
 import useSound from './SoundManager';
@@ -8,6 +8,7 @@ import useKeyboardInput from './KeyboardController';
 import QuoteAttribution from './QuoteAttribution';
 import { createStructuralMatch } from './utils';
 import SaveButton from './SaveButton';
+import WinCelebration from './WinCelebration';
 
 function App() {
   // ==== CONTEXT AND APP SETTINGS ====
@@ -30,6 +31,7 @@ function App() {
   const [letterFrequency, setLetterFrequency] = useState({});
   const [guessedMappings, setGuessedMappings] = useState({});
   const [originalLetters, setOriginalLetters] = useState([]);
+  const [startTime, setStartTime] = useState(null);
 
   // ==== DERIVED VALUES AND CALCULATIONS ====
   // Get unique encrypted letters that actually appear in the encrypted text
@@ -41,6 +43,7 @@ function App() {
   
   // Get used letters for display
   const usedGuessLetters = Object.values(guessedMappings);
+  
 
   // ==== UTILITY FUNCTIONS ====
   // Initialize sound manager
@@ -63,6 +66,7 @@ function App() {
         setLastCorrectGuess(null);
         setGuessedMappings({});
         setOriginalLetters(data.original_letters);
+        setStartTime(Date.now());
         playSound('keyclick');
       })
       .catch(err => console.error('Error starting game:', err));
@@ -275,7 +279,7 @@ function App() {
           </button>
         </div>
 
-        {hasWon && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} />}
+        {/* {hasWon && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} />} */}
         
         <div className="text-container">
           <pre className="encrypted">{encrypted || 'Loading...'}</pre>
@@ -367,18 +371,22 @@ function App() {
             })}
           </div>
 
-            {hasWon ? (
-      <div className="game-message">
-        <p>You won! All unique letters decrypted.</p>
-        <SaveButton hasWon={hasWon} playSound={playSound} />
-        <button onClick={startGame}>Play Again</button>
-      </div>
-    ) : mistakes >= maxMistakes ? (
-      <div className="game-message">
-        <p>Game Over! Too many mistakes.</p>
-        <button onClick={startGame}>Try Again</button>
-      </div>
-    ) : null}
+                  {hasWon ? (
+          <WinCelebration
+            startGame={startGame}
+            playSound={playSound}
+            mistakes={mistakes}
+            maxMistakes={maxMistakes}
+            startTime={startTime}
+            theme={settings.theme}
+            textColor={settings.textColor}
+          />
+        ) : mistakes >= maxMistakes ? (
+          <div className="game-message">
+            <p>Game Over! Too many mistakes.</p>
+            <button onClick={startGame}>Try Again</button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
