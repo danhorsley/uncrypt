@@ -332,16 +332,7 @@ function App() {
           </button>
         </div>
 
-        {settings.speedMode && (
-          <div className="keyboard-hint">
-            <p>
-              Keyboard Speed Mode: 
-              {!selectedEncrypted 
-                ? "Press a letter key to select from the encrypted grid." 
-                : `Selected ${selectedEncrypted} - Press a letter key to make a guess or ESC to cancel.`}
-            </p>
-          </div>
-        )}
+        
 
           <div className="sidebar">
             {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => {
@@ -370,6 +361,16 @@ function App() {
               );
             })}
           </div>
+          {settings.speedMode && (
+          <div className="keyboard-hint">
+            <p>
+              Keyboard Speed Mode: 
+              {!selectedEncrypted 
+                ? "Press a letter key to select from the encrypted grid." 
+                : `Selected ${selectedEncrypted} - Press a letter key to make a guess or ESC to cancel.`}
+            </p>
+          </div>
+        )}
 
                   {hasWon ? (
           <WinCelebration
