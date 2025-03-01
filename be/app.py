@@ -94,6 +94,7 @@ def start_game():
 
 @app.route('/start', methods=['GET'])
 def start():
+    print("new game starting!")
     encrypted, encrypted_frequency, unique_original_letters = start_game()
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
@@ -118,8 +119,10 @@ def start():
 
 @app.route('/guess', methods=['POST'])
 def guess():
+    print("guess logged")
     # Check if game_state exists in the session
     if 'game_state' not in session:
+        print("game_state not found in session")
         # If not, start a new game
         encrypted, encrypted_frequency, unique_original_letters = start_game()
         return jsonify({
@@ -128,8 +131,10 @@ def guess():
             'correctly_guessed': [],
             'error': 'Session expired, a new game was started'
         })
-    
+
     data = request.get_json()
+    print("data requested")
+    print(data)
     encrypted_letter = data['encrypted_letter']
     guessed_letter = data['guessed_letter']
     game_state = session['game_state']
@@ -164,7 +169,7 @@ def hint():
             'correctly_guessed': [],
             'error': 'Session expired, a new game was started'
         })
-    
+
     game_state = session['game_state']
     display, mistakes, correctly_guessed = provide_hint(game_state)
     session['game_state'] = game_state
