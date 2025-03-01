@@ -1,0 +1,368 @@
+/* 
+   Mobile.css - Dedicated styles for mobile devices 
+   Focused on landscape orientation with thumb-based gameplay
+   
+   Screen size reference:
+   - Small phones: 320px - 375px width (landscape: 568px - 667px)
+   - Medium phones: 376px - 414px width (landscape: 668px - 812px)
+   - Large phones: 415px - 480px width (landscape: 813px - 900px)
+   - Small tablets: 600px - 768px width
+*/
+
+/* Base mobile adjustments */
+.mobile-mode {
+    /* Override base container styles for mobile */
+    margin: 0 !important;
+    padding: 10px !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    height: 100vh;
+    box-sizing: border-box;
+  }
+  
+  /* Container adjustments for thumb-friendly layout */
+  .mobile-mode .game-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 20px);
+    justify-content: space-between;
+  }
+  
+  /* Adjust title size for mobile */
+  .mobile-mode .game-title {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  
+  /* Text display adjustments */
+  .mobile-mode .text-container {
+    max-width: 100%;
+    margin: 10px 0;
+    padding-bottom: 0;
+  }
+  
+  .mobile-mode .encrypted,
+  .mobile-mode .display {
+    padding: 10px;
+    font-size: 1rem;
+    max-height: 20vh;
+    overflow-y: auto;
+  }
+  
+  /* Grid layout for thumb operation */
+  .mobile-mode .grids {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0;
+    margin: 10px 0;
+    position: relative;
+  }
+  
+  /* Container for the middle controls */
+  .mobile-mode .middle-controls-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    position: relative;
+    z-index: 5;
+  }
+  
+  /* Enhance the separation for better thumb access */
+  @media (min-width: 450px) {
+    .mobile-mode .grids {
+      padding: 0 5%;
+    }
+  }
+  
+  /* For wider screens, ensure grids stay at edges */
+  @media (min-width: 600px) {
+    .mobile-mode .encrypted-grid {
+      position: absolute;
+      left: 10px;
+    }
+    
+    .mobile-mode .guess-grid {
+      position: absolute;
+      right: 10px;
+    }
+  }
+  
+  /* Position encrypted grid on left */
+  .mobile-mode .encrypted-grid {
+    margin-right: auto;
+    margin-left: 5px;
+    position: relative;
+    left: 0;
+    /* Add a subtle visual cue */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+  }
+  
+  /* Position guess grid on right */
+  .mobile-mode .guess-grid {
+    margin-left: auto;
+    margin-right: 5px;
+    position: relative;
+    right: 0;
+    /* Match the visual styling */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+  }
+  
+  /* Thumb zone indicators (optional visual cue) */
+  .mobile-mode .encrypted-grid::after,
+  .mobile-mode .guess-grid::after {
+    content: "";
+    position: absolute;
+    bottom: -18px;
+    font-size: 0.7rem;
+    color: rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+  }
+  
+  .mobile-mode .encrypted-grid::after {
+    content: "Left Thumb";
+    left: 0;
+  }
+  
+  .mobile-mode .guess-grid::after {
+    content: "Right Thumb";
+    right: 0;
+  }
+  
+  .mobile-mode.dark-theme .encrypted-grid::after,
+  .mobile-mode.dark-theme .guess-grid::after {
+    color: rgba(255, 255, 255, 0.5);
+  }
+  
+  /* Make grid cells larger for easier touch */
+  .mobile-mode .letter-cell {
+    width: 45px;
+    height: 45px;
+    font-size: 1.2em;
+    /* Enhance touch feedback */
+    transition: all 0.15s ease;
+  }
+  
+  /* Better touch feedback */
+  .mobile-mode .letter-cell:active {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  
+  /* Larger touch area for letter cells */
+  .mobile-mode .letter-cell::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    z-index: -1;
+  }
+  
+  /* Controls section - centered between grids */
+  .mobile-mode .controls {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 10px auto;
+    padding: 8px;
+    width: auto;
+    max-width: 140px;
+    position: relative;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    background-color: rgba(248, 249, 250, 0.9);
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Dark theme control adjustments */
+  .mobile-mode.dark-theme .controls {
+    background-color: rgba(51, 51, 51, 0.9);
+  }
+  
+  /* Adjust mistakes display for compact layout */
+  .mobile-mode .controls p {
+    margin: 0 0 10px 0;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    width: 100%;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+  }
+  
+  .mobile-mode.dark-theme .controls p {
+    background-color: rgba(68, 68, 68, 0.8);
+  }
+  
+  /* Make hint button smaller and full width of the controls container */
+  .mobile-mode .hint-button {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    margin: 0;
+    width: 100%;
+  }
+  
+  /* Position the controls more optimally for different screen sizes */
+  @media (min-width: 500px) {
+    .mobile-mode .controls {
+      max-width: 160px;
+    }
+  }
+  
+  /* Frequency sidebar adjustments */
+  .mobile-mode .sidebar {
+    max-width: 100%;
+    margin: 10px 0;
+    padding: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  /* Landscape-specific adjustments */
+  @media (orientation: landscape) {
+    .mobile-mode .game-content {
+      flex-direction: column;
+    }
+    
+    /* Make sure the text container doesn't take too much space */
+    .mobile-mode .text-container {
+      max-height: 30vh;
+      overflow-y: auto;
+    }
+    
+    /* Enhance thumb accessibility in landscape */
+    .mobile-mode .grids {
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+  }
+  
+  /* Screen size-specific adjustments */
+  /* Small devices in landscape mode */
+  @media (max-height: 450px) and (orientation: landscape) {
+    .mobile-mode .game-title {
+      font-size: 1.2rem;
+      margin-bottom: 5px;
+    }
+    
+    .mobile-mode .text-container {
+      max-height: 25vh;
+    }
+    
+    .mobile-mode .letter-cell {
+      width: 36px;
+      height: 36px;
+      font-size: 1em;
+    }
+    
+    .mobile-mode .controls {
+      padding: 5px;
+      margin: 5px 0;
+    }
+    
+    .mobile-mode .sidebar {
+      padding: 5px;
+      margin: 5px 0;
+    }
+    
+    .mobile-mode .encrypted,
+    .mobile-mode .display {
+      padding: 8px;
+      font-size: 0.9rem;
+    }
+  }
+  
+  /* Extra small devices (like iPhone SE in landscape) */
+  @media (max-height: 375px) and (orientation: landscape) {
+    .mobile-mode .game-title {
+      font-size: 1rem;
+      margin-bottom: 2px;
+    }
+    
+    .mobile-mode .letter-cell {
+      width: 32px;
+      height: 32px;
+      font-size: 0.9em;
+    }
+    
+    .mobile-mode .text-container {
+      max-height: 20vh;
+    }
+    
+    .mobile-mode .encrypted,
+    .mobile-mode .display {
+      padding: 5px;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+    
+    /* Compress controls */
+    .mobile-mode .controls p {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+    }
+    
+    .mobile-mode button {
+      padding: 8px 14px;
+      font-size: 0.8rem;
+    }
+  }
+  
+  /* Portrait warning for better experience */
+  .mobile-orientation-warning {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .mobile-mode.portrait .mobile-orientation-warning {
+    display: flex;
+  }
+  
+  .orientation-message {
+    background-color: #333;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 80%;
+  }
+  
+  .orientation-dismiss {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+  }
+  
+  /* Dark theme adjustments for mobile */
+  .mobile-mode.dark-theme {
+    background-color: #222;
+  }
+  
+  /* Text color theme adjustments for mobile */
+  .mobile-mode.text-scifi-blue .orientation-dismiss {
+    background-color: #4cc9f0;
+  }
+  
+  .mobile-mode.text-retro-green .orientation-dismiss {
+    background-color: #00ff41;
+    color: #003b00;
+  }

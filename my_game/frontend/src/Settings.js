@@ -207,6 +207,44 @@ function Settings({ currentSettings, onSave, onCancel }) {
         </div>
       </div>
 
+      {/* Mobile Mode Setting */}
+      <div className="settings-section">
+        <h2>Mobile Mode</h2>
+        <div className="settings-options">
+          <label className="settings-option">
+            <input
+              type="radio"
+              name="mobileMode"
+              checked={settings.mobileMode === 'auto'}
+              onChange={() => handleChange('mobileMode', 'auto')}
+            />
+            <span className="option-label">Auto Detect</span>
+          </label>
+          <label className="settings-option">
+            <input
+              type="radio"
+              name="mobileMode"
+              checked={settings.mobileMode === 'always'}
+              onChange={() => handleChange('mobileMode', 'always')}
+            />
+            <span className="option-label">Always Use Mobile Layout</span>
+          </label>
+          <label className="settings-option">
+            <input
+              type="radio"
+              name="mobileMode"
+              checked={settings.mobileMode === 'never'}
+              onChange={() => handleChange('mobileMode', 'never')}
+            />
+            <span className="option-label">Never Use Mobile Layout</span>
+          </label>
+          <p className="settings-description">
+            Mobile mode provides a thumb-friendly interface with grids positioned at the sides 
+            of the screen. Best experienced in landscape orientation.
+          </p>
+        </div>
+      </div>
+
       {/* Action Buttons */}
       <div className="settings-actions">
         <button className="settings-button cancel" onClick={onCancel}>

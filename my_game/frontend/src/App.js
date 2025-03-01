@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-//import Confetti from 'react-confetti';
+import './Mobile.css';
 import Settings from './Settings';
 import { useAppContext } from './AppContext';
 import useSound from './SoundManager';
@@ -10,6 +10,7 @@ import { createStructuralMatch } from './utils';
 import SaveButton from './SaveButton';
 import WinCelebration from './WinCelebration';
 import About from './About';
+import MobileLayout from './MobileLayout';
 
 function App() {
   // ==== CONTEXT AND APP SETTINGS ====
@@ -22,7 +23,11 @@ function App() {
     maxMistakes,
     isAboutOpen,
     openAbout,
-    closeAbout
+    closeAbout,
+    // Mobile-related properties
+    isMobile,
+    isLandscape,
+    useMobileMode
   } = useAppContext();
 
   // ==== STATE DECLARATIONS ====
@@ -274,22 +279,164 @@ function App() {
     );
   }
 
-  // ==== MAIN RENDER ====
-  // Game view
+  // Mobile Game View
+  if (useMobileMode) {
+    return (
+      <div className="App-container">
+        {isAboutOpen && <About isOpen={isAboutOpen} onClose={closeAbout} />}
+        <MobileLayout isLandscape={isLandscape}>
+          <div className="game-header">
+            <button className="about-icon" onClick={openAbout} aria-label="About">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </button>
+            <h1 className="game-title">Decrypto</h1>
+            <button className="settings-icon" onClick={showSettings} aria-label="Settings">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+          </div>
+          
+          {/* For the Mobile Game View in App.js, replace the controls and grid sections with this updated structure */}
+
+{/* Text container remains the same */}
+<div className={`text-container ${settings.hardcoreMode ? 'hardcore-mode' : ''}`}>
+  <pre className="encrypted">{encrypted || 'Loading...'}</pre>
+  <pre className="display" dangerouslySetInnerHTML={createStructuralMatch(encrypted, display)}></pre>
+  {settings.hardcoreMode && (
+    <div className="hardcore-badge">HARDCORE MODE</div>
+  )}
+</div>
+
+<QuoteAttribution 
+  hasWon={hasWon} 
+  theme={settings.theme} 
+  textColor={settings.textColor} 
+/>
+
+{/* New structure with middle controls container */}
+<div className="middle-controls-container">
+  <div className="controls">
+    <p>Mistakes: {mistakes}/{maxMistakes}</p>
+    <button 
+      onClick={handleHint} 
+      disabled={mistakes >= maxMistakes - 1}
+      className="hint-button"
+    >
+      Hint
+    </button>
+  </div>
+</div>
+
+{/* Grids remain the same */}
+<div className="grids">
+  <div className="encrypted-grid">
+    {sortedEncryptedLetters.map(letter => (
+      <div
+        key={letter}
+        className={`letter-cell ${selectedEncrypted === letter ? 'selected' : ''} ${
+          correctlyGuessed.includes(letter) ? 'guessed' : ''
+        } ${lastCorrectGuess === letter ? 'flash' : ''}`}
+        onClick={() => handleEncryptedClick(letter)}
+      >
+        {letter}
+      </div>
+    ))}
+  </div>
+  
+  <div className="guess-grid">
+    {originalLetters.map(letter => (
+      <div
+        key={letter}
+        className={`letter-cell ${usedGuessLetters.includes(letter) ? 'guessed' : ''}`}
+        onClick={() => handleGuessClick(letter)}
+      >
+        {letter}
+      </div>
+    ))}
+  </div>
+</div>
+          
+          <div className="sidebar">
+            {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => {
+              // Check if this letter has been guessed (appears in guessedMappings values)
+              const isGuessed = Object.values(guessedMappings).includes(letter);
+              
+              return (
+                <div key={letter} className="frequency-bar">
+                  {/* Letter display */}
+                  <span className={isGuessed ? 'guessed' : ''}>{letter}</span>
+                  
+                  {/* Frequency display */}
+                  {settings.frequencyDisplay === 'numeric' ? (
+                    // Numeric display
+                    <span className={isGuessed ? 'guessed' : ''}>
+                      {letterFrequency[letter] || 0}
+                    </span>
+                  ) : (
+                    // Bar display
+                    <div
+                      className={`bar ${isGuessed ? 'guessed' : ''}`}
+                      style={{ height: `${(letterFrequency[letter] || 0) * 10}px` }}
+                    ></div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {settings.speedMode && (
+            <div className="keyboard-hint">
+              <p>
+                Keyboard Speed Mode: 
+                {!selectedEncrypted 
+                  ? "Press a letter key to select from the encrypted grid." 
+                  : `Selected ${selectedEncrypted} - Press a letter key to make a guess or ESC to cancel.`}
+              </p>
+            </div>
+          )}
+
+          {hasWon ? (
+            <WinCelebration
+              startGame={startGame}
+              playSound={playSound}
+              mistakes={mistakes}
+              maxMistakes={maxMistakes}
+              startTime={startTime}
+              completionTime={completionTime}
+              theme={settings.theme}
+              textColor={settings.textColor}
+            />
+          ) : mistakes >= maxMistakes ? (
+            <div className="game-message">
+              <p>Game Over! Too many mistakes.</p>
+              <button onClick={startGame}>Try Again</button>
+            </div>
+          ) : null}
+        </MobileLayout>
+      </div>
+    );
+  }
+  
+  // Default Desktop Game View
   return (
     <div className={`App-container ${settings.theme === 'dark' ? 'dark-theme' : ''}`}>
       {isAboutOpen && <About isOpen={isAboutOpen} onClose={closeAbout} />}
       <div className={`App ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`} >
         <div className="game-header">
-          
           <button className="about-icon" onClick={openAbout} aria-label="About">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="12" y1="16" x2="12" y2="12"></line>
-    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-  </svg>
-</button>
-<h1 className="game-title">Decrypto</h1>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </button>
+          <h1 className="game-title">Decrypto</h1>
           <button className="settings-icon" onClick={showSettings} aria-label="Settings">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"></circle>

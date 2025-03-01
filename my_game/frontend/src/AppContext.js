@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import useDeviceDetection from './useDeviceDetection';
 
 // Create context
 const AppContext = createContext();
@@ -12,7 +13,7 @@ const defaultSettings = {
   speedMode: false,           // enable keyboard speed mode
   gridSorting: 'default',     // 'default' or 'alphabetical'
   hardcoreMode: false,        // removes spaces and punctuation
-  // other settings...
+  mobileMode: 'auto',         // 'auto', 'always', or 'never'
 };
 
 // Get max mistakes based on difficulty
@@ -36,8 +37,36 @@ export const AppProvider = ({ children }) => {
     return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
   });
   
+  // Get device information
+  const { isMobile, isLandscape, screenWidth, screenHeight, detectMobile } = useDeviceDetection();
+  
+  // Track whether we should use mobile mode
+  const [useMobileMode, setUseMobileMode] = useState(false);
+  
   const [currentView, setCurrentView] = useState('game'); // 'game' or 'settings'
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+
+  // Determine if we should use mobile mode based on settings and device
+  useEffect(() => {
+    if (settings.mobileMode === 'always') {
+      setUseMobileMode(true);
+    } else if (settings.mobileMode === 'never') {
+      setUseMobileMode(false);
+    } else {
+      // Auto mode - use device detection
+      setUseMobileMode(isMobile);
+    }
+  }, [settings.mobileMode, isMobile]);
+
+  // Re-check device when window resizes
+  useEffect(() => {
+    const handleResize = () => {
+      detectMobile();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [detectMobile]);
 
   // Apply theme whenever settings change
   useEffect(() => {
@@ -69,6 +98,7 @@ export const AppProvider = ({ children }) => {
   const showGame = () => {
     setCurrentView('game');
   };
+  
   const openAbout = () => {
     setIsAboutOpen(true);
   };
@@ -87,10 +117,14 @@ export const AppProvider = ({ children }) => {
     maxMistakes: getMaxMistakes(settings.difficulty),
     isAboutOpen,
     openAbout,
-    closeAbout
+    closeAbout,
+    // Mobile-related properties
+    isMobile,
+    isLandscape,
+    screenWidth,
+    screenHeight,
+    useMobileMode
   };
-
-
 
   return (
     <AppContext.Provider value={contextValue}>
