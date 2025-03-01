@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { formatMajorAttribution } from './utils'; // Import the formatting function
 
 /**
@@ -11,10 +11,13 @@ const QuoteAttribution = ({ hasWon, theme, textColor }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const hasFetchedRef = useRef(false);
 
   // Fetch attribution data when the game is won
   useEffect(() => {
-    if (hasWon) {
+    // Only fetch if the game is won AND we haven't already fetched
+    if (hasWon && !hasFetchedRef.current) {
+      hasFetchedRef.current = true; // Mark that we've already fetched
       setIsLoading(true);
       setError(null);
       
