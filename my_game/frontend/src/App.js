@@ -70,7 +70,8 @@ function App() {
   // ==== GAME FUNCTIONS ====
   const startGame = () => {
     fetch('/start', {
-        credentials: 'include'
+        credentials: 'include',
+        mode: 'cors'
       })
       .then(res => {
         console.log('Response status:', res.status);
@@ -123,6 +124,7 @@ function App() {
     fetch('/guess', {
       method: 'POST',
       credentials: 'include',
+      mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         encrypted_letter: selectedEncrypted,
@@ -162,6 +164,7 @@ function App() {
     fetch('/hint', {
       method: 'POST',
       credentials: 'include',
+      mode: 'cors',
       headers: { 'Content-Type': 'application/json' }
     })
       .then(res => res.json())
