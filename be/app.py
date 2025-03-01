@@ -6,10 +6,16 @@ import os
 from flask_cors import CORS
 
 app = Flask(__name__)
-# Simplified CORS settings that always work in Replit
+# Improved CORS settings with explicit Replit domains
 CORS(app, 
      supports_credentials=True,
-     resources={r"/*": {"origins": "*"}})
+     resources={r"/*": {"origins": [
+         "https://*.replit.app",
+         "https://*.repl.co",
+         "https://replit.com",
+         "http://localhost:3000",
+         "http://127.0.0.1:3000"
+     ]}})
 
 app.secret_key = 'your-secret-key'
 # Make sure session is permanent
