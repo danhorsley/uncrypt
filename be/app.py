@@ -6,8 +6,11 @@ import os
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, supports_credentials=True)  # Enable CORS with credentials support
 app.secret_key = 'your-secret-key'
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 paragraphs = [
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",

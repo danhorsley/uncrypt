@@ -69,7 +69,9 @@ function App() {
 
   // ==== GAME FUNCTIONS ====
   const startGame = () => {
-    fetch('/start')
+    fetch('/start', {
+        credentials: 'include'
+      })
       .then(res => {
         console.log('Response status:', res.status);
           console.log('Response headers:', [...res.headers.entries()]);
@@ -120,6 +122,7 @@ function App() {
   const submitGuess = (guessedLetter) => {
     fetch('/guess', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         encrypted_letter: selectedEncrypted,
@@ -158,6 +161,7 @@ function App() {
   const handleHint = () => {
     fetch('/hint', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' }
     })
       .then(res => res.json())
