@@ -70,12 +70,19 @@ function App() {
   // ==== GAME FUNCTIONS ====
   const startGame = () => {
     console.log('Initiating startGame fetch request');
-    fetch('/start', {
+    
+    // Create base URL from current origin or use backend URL directly
+    const baseUrl = window.location.hostname.includes('replit') 
+      ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
+      : '';
+      
+    fetch(`${baseUrl}/start`, {
         credentials: 'include',
         mode: 'cors',
         headers: {
           'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache',
+          'X-Requested-With': 'XMLHttpRequest'
         }
       })
       .then(res => {
@@ -140,11 +147,19 @@ function App() {
   };
 
   const submitGuess = (guessedLetter) => {
-    fetch('/guess', {
+    // Create base URL from current origin or use backend URL directly
+    const baseUrl = window.location.hostname.includes('replit') 
+      ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
+      : '';
+      
+    fetch(`${baseUrl}/guess`, {
       method: 'POST',
       credentials: 'include',
       mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
       body: JSON.stringify({
         encrypted_letter: selectedEncrypted,
         guessed_letter: guessedLetter.toUpperCase()
@@ -180,11 +195,19 @@ function App() {
   };
 
   const handleHint = () => {
-    fetch('/hint', {
+    // Create base URL from current origin or use backend URL directly
+    const baseUrl = window.location.hostname.includes('replit') 
+      ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
+      : '';
+      
+    fetch(`${baseUrl}/hint`, {
       method: 'POST',
       credentials: 'include',
       mode: 'cors',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
     })
       .then(res => res.json())
       .then(data => {

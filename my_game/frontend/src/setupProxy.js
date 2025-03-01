@@ -7,7 +7,9 @@ module.exports = function (app) {
     createProxyMiddleware({
       target: "http://0.0.0.0:8000",
       changeOrigin: true,
-      cookieDomainRewrite: "",
+      cookieDomainRewrite: {
+        "*": ""
+      },
       withCredentials: true,
       secure: false,
       xfwd: true,
@@ -32,7 +34,7 @@ module.exports = function (app) {
           const cookies = proxyRes.headers['set-cookie'].map(cookie => 
             cookie.replace(/Domain=[^;]+;/i, '')
                  .replace(/SameSite=[^;]+;/i, 'SameSite=None;')
-                 .replace(/Secure/i, '')
+                 .replace(/Secure/i, 'Secure')
           );
           proxyRes.headers['set-cookie'] = cookies;
         }

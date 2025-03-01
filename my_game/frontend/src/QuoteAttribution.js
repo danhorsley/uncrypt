@@ -18,7 +18,19 @@ const QuoteAttribution = ({ hasWon, theme, textColor }) => {
       setIsLoading(true);
       setError(null);
       
-      fetch('/get_attribution')
+      // Create base URL from current origin or use backend URL directly
+      const baseUrl = window.location.hostname.includes('replit') 
+        ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
+        : '';
+        
+      fetch(`${baseUrl}/get_attribution`, {
+        credentials: 'include',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
         .then(res => {
           if (!res.ok) {
             throw new Error('Failed to fetch attribution');
