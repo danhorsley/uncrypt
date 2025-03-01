@@ -8,9 +8,9 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # Enable CORS with credentials support
 app.secret_key = 'your-secret-key'
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_PATH'] = '/'
 
 paragraphs = [
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
@@ -96,6 +96,7 @@ def start_game():
 def start():
     print("new game starting!")
     encrypted, encrypted_frequency, unique_original_letters = start_game()
+    print("Game state created and saved to session:", 'game_state' in session)
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
     full_frequency = {
@@ -120,6 +121,10 @@ def start():
 @app.route('/guess', methods=['POST'])
 def guess():
     print("guess logged")
+    print("Session cookie present:", request.cookies.get('session') is not None)
+    print("Session ID:", session.get('_id', 'None'))
+    print("Game state in session:", 'game_state' in session)
+    
     # Check if game_state exists in the session
     if 'game_state' not in session:
         print("game_state not found in session")
