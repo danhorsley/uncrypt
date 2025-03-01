@@ -12,10 +12,16 @@ CORS(app,
      resources={r"/*": {"origins": [
          "https://*.replit.app",
          "https://*.repl.co",
+         "https://*.replit.dev",
          "https://replit.com",
+         "https://staging.replit.com",
+         "https://firewalledreplit.com",
          "http://localhost:3000",
          "http://127.0.0.1:3000"
-     ]}})
+     ]}},
+     allow_headers=["Content-Type", "X-Requested-With", "Accept"],
+     expose_headers=["Access-Control-Allow-Origin"],
+     supports_credentials=True)
 
 app.secret_key = 'your-secret-key'
 # Make sure session is permanent
