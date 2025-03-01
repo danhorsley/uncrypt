@@ -9,20 +9,21 @@ app.secret_key = 'your-secret-key'
 
 paragraphs = [
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
-    "A JOURNEY OF A THOUSAND MILES BEGINS WITH A SINGLE STEP",
-    "TEST",
+    "A JOURNEY OF A THOUSAND MILES BEGINS WITH A SINGLE STEP", "TEST",
     "LEONARDO DA VINCI WAS BORN IN 1452 NEAR FLORENCE",
     "ABRAHAM LINCOLN DELIVERED THE GETTYSBURG ADDRESS IN 1863"
 ]
 
+
 class QuoteLoader:
+
     def __init__(self, csv_path):
         """Load quotes from CSV into memory once."""
         self.quotes = []
         with open(csv_path, 'r', encoding='latin-1') as csvfile:
             reader = csv.DictReader(csvfile)
             self.quotes = [row for row in reader]  # Store the full row
-    
+
     def get_random_quote(self):
         """Return a random quote with attributions from the loaded list."""
         quote_data = random.choice(self.quotes)
@@ -32,40 +33,47 @@ class QuoteLoader:
             "Minor Attribution": quote_data["Minor Attribution"]
         }
 
+
 def generate_mapping():
     alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     shuffled = alphabet.copy()
     random.shuffle(shuffled)
     return dict(zip(alphabet, shuffled))
 
+
 def encrypt_paragraph(paragraph, mapping):
     return ''.join(mapping.get(char, char) for char in paragraph.upper())
 
+
 def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
-    return ''.join(
-        reverse_mapping[char] if char in correctly_guessed else '?' if char.isalpha() else char
-        for char in encrypted_paragraph
-    )
+    return ''.join(reverse_mapping[char] if char in
+                   correctly_guessed else '?' if char.isalpha() else char
+                   for char in encrypted_paragraph)
+
 
 def get_letter_frequency(text):
     return Counter(c for c in text.upper() if c.isalpha())
 
+
 def get_unique_letters(text):
     return sorted(set(c for c in text.upper() if c.isalpha()))
+
 
 def start_game():
     # Initialize the quote loader
     #quote_loader = QuoteLoader('quotes.csv')
-    quote_loader = QuoteLoader('curated.csv')
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(current_dir, 'curated.csv')
+    quote_loader = QuoteLoader(csv_path)
     quote_data = quote_loader.get_random_quote()
-    
+
     paragraph = quote_data["Quote"]
     mapping = generate_mapping()
     reverse_mapping = {v: k for k, v in mapping.items()}
     encrypted = encrypt_paragraph(paragraph, mapping)
     encrypted_frequency = get_letter_frequency(encrypted)
     unique_original_letters = get_unique_letters(paragraph)
-    
+
     session['game_state'] = {
         'original_paragraph': paragraph,
         'encrypted_paragraph': encrypted,
@@ -78,13 +86,17 @@ def start_game():
     }
     return encrypted, encrypted_frequency, unique_original_letters
 
+
 @app.route('/start', methods=['GET'])
 def start():
     encrypted, encrypted_frequency, unique_original_letters = start_game()
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
-    full_frequency = {chr(65 + i): encrypted_frequency.get(chr(65 + i), 0) for i in range(26)}
-    
+    full_frequency = {
+        chr(65 + i): encrypted_frequency.get(chr(65 + i), 0)
+        for i in range(26)
+    }
+
     ret = {
         'encrypted_paragraph': encrypted,
         'mistakes': 0,
@@ -95,8 +107,9 @@ def start():
         'major_attribution': '',
         'minor_attribution': ''
     }
-    
+
     return jsonify(ret)
+
 
 @app.route('/guess', methods=['POST'])
 def guess():
@@ -104,18 +117,17 @@ def guess():
     encrypted_letter = data['encrypted_letter']
     guessed_letter = data['guessed_letter']
     game_state = session['game_state']
-    
+
     if validate_guess(encrypted_letter, guessed_letter,
-                     game_state['reverse_mapping'],
-                     game_state['correctly_guessed'],
-                     game_state['mistakes']):
+                      game_state['reverse_mapping'],
+                      game_state['correctly_guessed'], game_state['mistakes']):
         game_state['mistakes'] = game_state['mistakes']
     else:
         game_state['mistakes'] += 1
-    
+
     display = get_display(game_state['encrypted_paragraph'],
-                         game_state['correctly_guessed'],
-                         game_state['reverse_mapping'])
+                          game_state['correctly_guessed'],
+                          game_state['reverse_mapping'])
     session['game_state'] = game_state
     return jsonify({
         'display': display,
@@ -129,42 +141,54 @@ def hint():
     game_state = session['game_state']
     display, mistakes, correctly_guessed = provide_hint(game_state)
     session['game_state'] = game_state
-    return jsonify({'display': display, 'mistakes': mistakes, 'correctly_guessed': correctly_guessed})
+    return jsonify({
+        'display': display,
+        'mistakes': mistakes,
+        'correctly_guessed': correctly_guessed
+    })
 
 
-def validate_guess(encrypted_letter, guessed_letter, reverse_mapping, correctly_guessed, mistakes):
+def validate_guess(encrypted_letter, guessed_letter, reverse_mapping,
+                   correctly_guessed, mistakes):
     if reverse_mapping[encrypted_letter] == guessed_letter:
         if encrypted_letter not in correctly_guessed:
             correctly_guessed.append(encrypted_letter)
         return True
     return False
 
+
 def provide_hint(game_state):
     all_encrypted = list(game_state['mapping'].values())
-    unmapped = [letter for letter in all_encrypted if letter not in game_state['correctly_guessed']]
+    unmapped = [
+        letter for letter in all_encrypted
+        if letter not in game_state['correctly_guessed']
+    ]
     if unmapped:
-        used_n_mapped = [x for x in unmapped if x in game_state['encrypted_paragraph']]
+        used_n_mapped = [
+            x for x in unmapped if x in game_state['encrypted_paragraph']
+        ]
         letter = random.choice(used_n_mapped)
         game_state['correctly_guessed'].append(letter)
         game_state['mistakes'] += 1
         r1 = get_display(game_state['encrypted_paragraph'],
-                          game_state['correctly_guessed'],
-                          game_state['reverse_mapping'])
+                         game_state['correctly_guessed'],
+                         game_state['reverse_mapping'])
         r2 = game_state['mistakes']
         r3 = game_state['correctly_guessed']
         print(r1, r2, r3)
         return r1, r2, r3
     return None, game_state['mistakes']
 
+
 @app.route('/get_attribution', methods=['GET'])
 def get_attribution():
     game_state = session['game_state']
-    
+
     # Check if the game is completed (all letters guessed)
     encrypted = game_state['encrypted_paragraph']
     unique_encrypted_letters = len(set(c for c in encrypted if c.isalpha()))
     correctly_guessed = game_state['correctly_guessed']
-    
+
     # Only return the attribution if the game is won
     if len(correctly_guessed) >= unique_encrypted_letters:
         return jsonify({
@@ -172,54 +196,56 @@ def get_attribution():
             'minor_attribution': game_state['minor_attribution']
         })
     else:
-        return jsonify({
-            'error': 'Game not completed yet'
-        }), 400
-        
+        return jsonify({'error': 'Game not completed yet'}), 400
+
+
 @app.route('/save_quote', methods=['POST'])
 def save_quote():
     game_state = session.get('game_state')
-    
+
     if not game_state:
         return jsonify({'error': 'No active game found'}), 400
-    
+
     # Extract quote and attribution data
     quote = game_state.get('original_paragraph', '')
     major_attribution = game_state.get('major_attribution', '')
     minor_attribution = game_state.get('minor_attribution', '')
-    
+
     if not quote:
         return jsonify({'error': 'No quote to save'}), 400
-    
+
     # File to save to
     csv_path = 'curated.csv'
     file_exists = os.path.isfile(csv_path)
-    
+
     # Check if quote already exists in the file
     if file_exists:
         with open(csv_path, 'r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 if row.get('Quote') == quote:
-                    return jsonify({'message': 'Quote already saved in curated list'}), 200
-    
+                    return jsonify(
+                        {'message':
+                         'Quote already saved in curated list'}), 200
+
     # Append the quote to the file
     with open(csv_path, 'a', newline='', encoding='utf-8') as csvfile:
         fieldnames = ['Quote', 'Major Attribution', 'Minor Attribution']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        
+
         # Write header if file didn't exist
         if not file_exists:
             writer.writeheader()
-        
+
         # Write the quote data
         writer.writerow({
             'Quote': quote,
             'Major Attribution': major_attribution,
             'Minor Attribution': minor_attribution
         })
-    
+
     return jsonify({'message': 'Quote saved successfully'}), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5050)

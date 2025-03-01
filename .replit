@@ -20,5 +20,5 @@ args = "python be/app.py"
 
 [[ports]]
 localPort = 5050
-externalPort = 8000
+externalPort = 8080
 exposeLocalhost = true
