@@ -6,9 +6,10 @@ channel = "stable-24_05"
 
 [deployment]
 run = ["sh", "-c", "python run.py"]
+build = ["sh", "-c", "cd my_game/frontend && npm install && npm run build"]
 
 [workflows]
-runButton = "Run"
+runButton = "Run Backend"
 
 [[workflows.workflow]]
 name = "Run"
@@ -17,6 +18,26 @@ author = 1706970
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python be/app.py"
+
+[[workflows.workflow]]
+name = "Run Backend"
+author = 1706970
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python run.py"
+
+[[workflows.workflow]]
+name = "Run Frontend"
+author = 1706970
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd my_game/frontend && npm start"
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
 
 [[ports]]
 localPort = 5050
