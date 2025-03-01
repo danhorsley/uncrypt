@@ -71,6 +71,8 @@ function App() {
   const startGame = () => {
     fetch('/start')
       .then(res => {
+        console.log('Response status:', res.status);
+          console.log('Response headers:', [...res.headers.entries()]);
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         return res.json();
       })
