@@ -21,8 +21,8 @@ function Settings({ currentSettings, onSave, onCancel }) {
     <div className="settings-container">
       <h1 className="settings-title">Game Settings</h1>
 
-      {/* Frequency Display Setting */}
-      <div className="settings-section">
+    {/* Frequency Display Setting */}
+    <div className="settings-section">
         <h2>Frequency Display</h2>
         <div className="settings-options">
           <label className="settings-option">
@@ -42,6 +42,52 @@ function Settings({ currentSettings, onSave, onCancel }) {
               onChange={() => handleChange('frequencyDisplay', 'numeric')}
             />
             <span className="option-label">Numbers</span>
+          </label>
+        </div>
+        </div>
+      
+      {/* Hardcore Mode Setting */}
+      <div className="settings-section">
+        <h2>Gameplay Mode</h2>
+        <div className="settings-options">
+          <label className="settings-option">
+            <input
+              type="checkbox"
+              checked={settings.hardcoreMode}
+              onChange={() => handleChange('hardcoreMode', !settings.hardcoreMode)}
+            />
+            <span className="option-label">Hardcore Mode</span>
+          </label>
+          <p className="settings-description">
+            When enabled, spaces and punctuation will be removed from the encrypted text,
+            making it more challenging to decrypt.
+          </p>
+        </div>
+      </div>
+      
+
+
+      {/* Grid Sorting Setting */}
+      <div className="settings-section">
+        <h2>Encrypted Grid Sorting</h2>
+        <div className="settings-options">
+          <label className="settings-option">
+            <input
+              type="radio"
+              name="gridSorting"
+              checked={settings.gridSorting === 'default'}
+              onChange={() => handleChange('gridSorting', 'default')}
+            />
+            <span className="option-label">Default Order (as they appear in text)</span>
+          </label>
+          <label className="settings-option">
+            <input
+              type="radio"
+              name="gridSorting"
+              checked={settings.gridSorting === 'alphabetical'}
+              onChange={() => handleChange('gridSorting', 'alphabetical')}
+            />
+            <span className="option-label">Alphabetical Order</span>
           </label>
         </div>
       </div>
@@ -142,24 +188,24 @@ function Settings({ currentSettings, onSave, onCancel }) {
         </div>
       </div>
       
-{/* Speed Mode */}
-<div className="settings-section">
-  <h2>Speed Mode</h2>
-  <div className="settings-options">
-    <label className="settings-option">
-      <input
-        type="checkbox"
-        checked={settings.speedMode}
-        onChange={() => handleChange('speedMode', !settings.speedMode)}
-      />
-      <span className="option-label">Enable Keyboard Speed Mode</span>
-    </label>
-    <p className="settings-description">
-      When enabled, press a key to select an encrypted letter, then press another key to guess.
-      ESC cancels selection. Makes for faster gameplay.
-    </p>
-  </div>
-</div>
+      {/* Speed Mode */}
+      <div className="settings-section">
+        <h2>Speed Mode</h2>
+        <div className="settings-options">
+          <label className="settings-option">
+            <input
+              type="checkbox"
+              checked={settings.speedMode}
+              onChange={() => handleChange('speedMode', !settings.speedMode)}
+            />
+            <span className="option-label">Enable Keyboard Speed Mode</span>
+          </label>
+          <p className="settings-description">
+            When enabled, press a key to select an encrypted letter, then press another key to guess.
+            ESC cancels selection. Makes for faster gameplay.
+          </p>
+        </div>
+      </div>
 
       {/* Action Buttons */}
       <div className="settings-actions">

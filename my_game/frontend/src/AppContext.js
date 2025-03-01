@@ -9,7 +9,9 @@ const defaultSettings = {
   theme: 'light',             // 'light' or 'dark'
   difficulty: 'normal',       // 'easy', 'normal', or 'hard'
   textColor: 'default',       // 'default', 'scifi-blue', or 'retro-green'
-  speedMode: false,           // Add this line - enable keyboard speed mode
+  speedMode: false,           // enable keyboard speed mode
+  gridSorting: 'default',     // 'default' or 'alphabetical'
+  hardcoreMode: false,        // removes spaces and punctuation
   // other settings...
 };
 

@@ -32,10 +32,20 @@ function App() {
   const [guessedMappings, setGuessedMappings] = useState({});
   const [originalLetters, setOriginalLetters] = useState([]);
   const [startTime, setStartTime] = useState(null);
+  const [completionTime, setCompletionTime] = useState(null);
 
   // ==== DERIVED VALUES AND CALCULATIONS ====
   // Get unique encrypted letters that actually appear in the encrypted text
   const encryptedLetters = [...new Set(encrypted.match(/[A-Z]/g) || [])];
+  
+  // Sort the encrypted letters based on the setting
+  const sortedEncryptedLetters = React.useMemo(() => {
+    if (settings.gridSorting === 'alphabetical') {
+      return [...encryptedLetters].sort();
+    }
+    return encryptedLetters;
+  }, [encryptedLetters, settings.gridSorting]);
+  
   const uniqueEncryptedLetters = encryptedLetters.length;
   
   // Calculate if all encrypted letters have been correctly guessed
@@ -43,7 +53,6 @@ function App() {
   
   // Get used letters for display
   const usedGuessLetters = Object.values(guessedMappings);
-  
 
   // ==== UTILITY FUNCTIONS ====
   // Initialize sound manager
@@ -57,8 +66,19 @@ function App() {
         return res.json();
       })
       .then(data => {
-        setEncrypted(data.encrypted_paragraph);
-        setDisplay(data.display);
+        // Apply hardcore mode if enabled
+        let encryptedText = data.encrypted_paragraph;
+        let displayText = data.display;
+        
+        if (settings.hardcoreMode) {
+          // Remove spaces and punctuation from encrypted text
+          encryptedText = encryptedText.replace(/[^A-Z]/g, '');
+          // Apply same transformation to display text to match structure
+          displayText = displayText.replace(/[^A-Z?]/g, '');
+        }
+        
+        setEncrypted(encryptedText);
+        setDisplay(displayText);
         setMistakes(data.mistakes);
         setCorrectlyGuessed([]);
         setLetterFrequency(data.letter_frequency);
@@ -67,6 +87,7 @@ function App() {
         setGuessedMappings({});
         setOriginalLetters(data.original_letters);
         setStartTime(Date.now());
+        setCompletionTime(null);
         playSound('keyclick');
       })
       .catch(err => console.error('Error starting game:', err));
@@ -96,7 +117,13 @@ function App() {
     })
       .then(res => res.json())
       .then(data => {
-        setDisplay(data.display);
+        // Process display text for hardcore mode if enabled
+        let displayText = data.display;
+        if (settings.hardcoreMode) {
+          displayText = displayText.replace(/[^A-Z?]/g, '');
+        }
+        
+        setDisplay(displayText);
         setMistakes(data.mistakes);
         setCorrectlyGuessed(data.correctly_guessed);
         if (data.correctly_guessed.includes(selectedEncrypted) && 
@@ -127,8 +154,14 @@ function App() {
         // Store old state for comparison
         const oldCorrectlyGuessed = [...correctlyGuessed];
         
+        // Process display text for hardcore mode if enabled
+        let displayText = data.display;
+        if (settings.hardcoreMode) {
+          displayText = displayText.replace(/[^A-Z?]/g, '');
+        }
+        
         // Update state with server response
-        setDisplay(data.display);
+        setDisplay(displayText);
         setMistakes(data.mistakes);
         
         if (data.correctly_guessed) {
@@ -158,35 +191,6 @@ function App() {
       })
       .catch(err => console.error('Error getting hint:', err));
   };
-
-  // Create a structurally identical display text
-  // const createStructuralMatch = () => {
-  //   if (!encrypted || !display) return { __html: '' };
-    
-  //   // Extract only the letters from the display text (removing spaces/punctuation)
-  //   const displayLetters = display.replace(/[^A-Z?]/g, '');
-  //   let letterIndex = 0;
-  //   let structuredDisplay = '';
-    
-  //   // Iterate through encrypted text and replace only the letters
-  //   for (let i = 0; i < encrypted.length; i++) {
-  //     const char = encrypted[i];
-  //     if (/[A-Z]/.test(char)) {
-  //       // If it's a letter, use the corresponding character from display
-  //       if (letterIndex < displayLetters.length) {
-  //         structuredDisplay += displayLetters[letterIndex];
-  //         letterIndex++;
-  //       } else {
-  //         structuredDisplay += '?';
-  //       }
-  //     } else {
-  //       // For non-letters (spaces, punctuation), keep the original character
-  //       structuredDisplay += char;
-  //     }
-  //   }
-    
-  //   return { __html: structuredDisplay };
-  // };
 
   // ==== KEYBOARD INPUT HANDLERS ====
   const handleEncryptedSelect = (letter) => {
@@ -222,7 +226,9 @@ function App() {
 
   // Play win sound when game is won
   useEffect(() => {
-    if (hasWon) {
+    if (hasWon && !completionTime) {
+      // Set completion time when the player wins
+      setCompletionTime(Date.now());
       playSound('win');
     } 
     console.log('Win check:', { 
@@ -230,7 +236,7 @@ function App() {
       correctlyGuessedLength: correctlyGuessed.length,
       hasWon: hasWon
     });
-  }, [correctlyGuessed, uniqueEncryptedLetters, hasWon]);
+  }, [correctlyGuessed, uniqueEncryptedLetters, hasWon, completionTime, playSound]);
 
   // Apply theme effect - this runs for both game and settings views
   useEffect(() => {
@@ -278,12 +284,13 @@ function App() {
             </svg>
           </button>
         </div>
-
-        {/* {hasWon && <Confetti width={window.innerWidth} height={window.innerHeight} recycle={false} />} */}
         
-        <div className="text-container">
+        <div className={`text-container ${settings.hardcoreMode ? 'hardcore-mode' : ''}`}>
           <pre className="encrypted">{encrypted || 'Loading...'}</pre>
           <pre className="display" dangerouslySetInnerHTML={createStructuralMatch(encrypted, display)}></pre>
+          {settings.hardcoreMode && (
+            <div className="hardcore-badge">HARDCORE MODE</div>
+          )}
         </div>
         <QuoteAttribution 
             hasWon={hasWon} 
@@ -293,7 +300,7 @@ function App() {
 
         <div className="grids">
           <div className="encrypted-grid">
-            {encryptedLetters.map(letter => (
+            {sortedEncryptedLetters.map(letter => (
               <div
                 key={letter}
                 className={`letter-cell ${selectedEncrypted === letter ? 'selected' : ''} ${
@@ -332,7 +339,16 @@ function App() {
           </button>
         </div>
 
-        
+        {settings.speedMode && (
+          <div className="keyboard-hint">
+            <p>
+              Keyboard Speed Mode: 
+              {!selectedEncrypted 
+                ? "Press a letter key to select from the encrypted grid." 
+                : `Selected ${selectedEncrypted} - Press a letter key to make a guess or ESC to cancel.`}
+            </p>
+          </div>
+        )}
 
           <div className="sidebar">
             {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => {
@@ -361,24 +377,15 @@ function App() {
               );
             })}
           </div>
-          {settings.speedMode && (
-          <div className="keyboard-hint">
-            <p>
-              Keyboard Speed Mode: 
-              {!selectedEncrypted 
-                ? "Press a letter key to select from the encrypted grid." 
-                : `Selected ${selectedEncrypted} - Press a letter key to make a guess or ESC to cancel.`}
-            </p>
-          </div>
-        )}
 
-                  {hasWon ? (
-          <WinCelebration
+            {hasWon ? (
+                      <WinCelebration
             startGame={startGame}
             playSound={playSound}
             mistakes={mistakes}
             maxMistakes={maxMistakes}
             startTime={startTime}
+            completionTime={completionTime}
             theme={settings.theme}
             textColor={settings.textColor}
           />

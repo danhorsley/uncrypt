@@ -41,6 +41,13 @@ export const formatMajorAttribution = (text) => {
   export const createStructuralMatch = (encrypted, display) => {
     if (!encrypted || !display) return { __html: '' };
     
+    // If the encrypted text doesn't have spaces or punctuation (hardcore mode),
+    // we can simply return the display text as is
+    if (!/[^A-Z]/.test(encrypted)) {
+      return { __html: display };
+    }
+    
+    // For normal mode with spaces and punctuation, we need to maintain structure
     // Extract only the letters from the display text (removing spaces/punctuation)
     const displayLetters = display.replace(/[^A-Z?]/g, '');
     let letterIndex = 0;

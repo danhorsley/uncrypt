@@ -9,6 +9,7 @@ const WinCelebration = ({
   mistakes, 
   maxMistakes, 
   startTime,
+  completionTime,
   theme,
   textColor 
 }) => {
@@ -25,16 +26,18 @@ const WinCelebration = ({
   const containerRef = useRef(null);
   
   // Calculate stats
-  const completionTime = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-  const minutes = Math.floor(completionTime / 60);
-  const seconds = completionTime % 60;
+  const gameTimeSeconds = startTime && completionTime 
+    ? Math.floor((completionTime - startTime) / 1000) 
+    : 0;
+  const minutes = Math.floor(gameTimeSeconds / 60);
+  const seconds = gameTimeSeconds % 60;
   const timeString = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
   
   // Calculate score based on mistakes and time
   const maxScore = 1000;
   const mistakePenalty = 50;
   const timePenalty = 2; // points per second
-  const score = Math.max(0, maxScore - (mistakes * mistakePenalty) - (completionTime * timePenalty));
+  const score = Math.max(0, maxScore - (mistakes * mistakePenalty) - (gameTimeSeconds * timePenalty));
   
   // Performance rating based on score
   let rating = '';
@@ -47,7 +50,7 @@ const WinCelebration = ({
   // Debug logs for troubleshooting
   console.log("Animation stage:", animationStage);
   console.log("Show stats:", showStats);
-  console.log("Completion time:", completionTime);
+  console.log("Game time seconds:", gameTimeSeconds);
   console.log("Score:", score);
   
   // Staged animation sequence

@@ -1141,3 +1141,36 @@ button:hover:not(:disabled) {
   color: #f8f9fa;
   background-color: #333;
 }
+
+/* Hardcore mode styles */
+.text-container.hardcore-mode {
+  border: 2px solid #dc3545;
+  position: relative;
+}
+
+.hardcore-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #dc3545;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-bottom-left-radius: 5px;
+  letter-spacing: 1px;
+  z-index: 2;
+}
+
+.dark-theme .hardcore-badge {
+  background-color: #b02a37;
+}
+
+/* Text color themes for hardcore mode */
+.text-scifi-blue .hardcore-badge {
+  background-color: #0d6efd;
+}
+
+.text-retro-green .hardcore-badge {
+  background-color: #198754;
+}
