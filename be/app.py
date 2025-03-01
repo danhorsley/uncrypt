@@ -7,31 +7,32 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 # Improved CORS settings with explicit Replit domains
-CORS(app, 
-     supports_credentials=True,
-     resources={r"/*": {"origins": [
-         "https://*.replit.app",
-         "https://*.repl.co",
-         "https://*.replit.dev",
-         "https://replit.com",
-         "https://staging.replit.com",
-         "https://firewalledreplit.com",
-         "http://localhost:3000",
-         "http://127.0.0.1:3000"
-     ]}},
-     allow_headers=["Content-Type", "X-Requested-With", "Accept"],
-     expose_headers=["Access-Control-Allow-Origin"],
-     supports_credentials=True)
+CORS(
+    app,
+    supports_credentials=True,
+    resources={
+        r"/*": {
+            "origins": [
+                "https://*.replit.app", "https://*.repl.co",
+                "https://*.replit.dev", "https://replit.com",
+                "https://staging.replit.com", "https://firewalledreplit.com",
+                "http://localhost:3000", "http://127.0.0.1:3000",
+                "https://0dcfc324-cb33-44f1-9378-fe0ab7b3f2fa-00-2no1mkg69nqic.spock.replit.dev:3000"
+            ]
+        }
+    },
+    allow_headers=["Content-Type", "X-Requested-With", "Accept"],
+    expose_headers=["Access-Control-Allow-Origin"])
 
 app.secret_key = 'your-secret-key'
 # Make sure session is permanent
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
 app.config['SESSION_COOKIE_SAMESITE'] = None  # None allows cross-site requests
-app.config['SESSION_COOKIE_SECURE'] = False    
+app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_PATH'] = '/'
-app.config['SESSION_COOKIE_DOMAIN'] = None    # Allow any domain
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow any domain
 
 paragraphs = [
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
@@ -118,19 +119,19 @@ def start():
     print("==== NEW GAME STARTING ====")
     # Make session permanent
     session.permanent = True
-    
+
     # Clear any existing session data to ensure a fresh start
     session.clear()
-    
+
     # Start a new game
     encrypted, encrypted_frequency, unique_original_letters = start_game()
-    
+
     # Debug info
     print("Game state created and saved to session:", 'game_state' in session)
     print("Session ID:", session.sid if hasattr(session, 'sid') else 'None')
     print("Request cookies:", request.cookies)
     print("Response will include Set-Cookie:", "Yes")
-    
+
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
     full_frequency = {
@@ -155,10 +156,11 @@ def start():
 @app.route('/guess', methods=['POST'])
 def guess():
     print("guess logged")
-    print("Session cookie present:", request.cookies.get('session') is not None)
+    print("Session cookie present:",
+          request.cookies.get('session') is not None)
     print("Session ID:", session.get('_id', 'None'))
     print("Game state in session:", 'game_state' in session)
-    
+
     # Check if game_state exists in the session
     if 'game_state' not in session:
         print("game_state not found in session")
