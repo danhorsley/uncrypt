@@ -3,8 +3,10 @@ import random
 from collections import Counter
 import csv
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 app.secret_key = 'your-secret-key'
 
 paragraphs = [
