@@ -6,6 +6,7 @@ module.exports = function (app) {
     createProxyMiddleware({
       target: "http://0.0.0.0:8000",
       changeOrigin: true,
+      methods: ["GET", "POST", "PUT", "DELETE"],
     }),
   );
 };
