@@ -11,7 +11,7 @@ function About({ isOpen, onClose }) {
     <div className="about-overlay">
         <div className={`about-container ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`}>
         <button className="about-close" onClick={onClose}>&times;</button>
-        <h2>Decrypto</h2>
+        <h2>uncrypt</h2>
         <p>
           Crack the code by figuring out which letter stands for which!
         </p>

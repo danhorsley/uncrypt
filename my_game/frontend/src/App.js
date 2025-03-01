@@ -293,7 +293,7 @@ function App() {
                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
               </svg>
             </button>
-            <h1 className="game-title">Decrypto</h1>
+            <h1 className="game-title">uncrypt</h1>
             <button className="settings-icon" onClick={showSettings} aria-label="Settings">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
@@ -436,7 +436,7 @@ function App() {
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
           </button>
-          <h1 className="game-title">Decrypto</h1>
+          <h1 className="game-title">uncrypt</h1>
           <button className="settings-icon" onClick={showSettings} aria-label="Settings">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"></circle>
