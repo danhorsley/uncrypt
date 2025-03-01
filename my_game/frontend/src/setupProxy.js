@@ -10,3 +10,17 @@ module.exports = function(app) {
     })
   );
 };
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+module.exports = function(app) {
+  app.use(
+    '/api',
+    createProxyMiddleware({
+      target: 'http://0.0.0.0:5050',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/api': '', // remove /api prefix when forwarding to backend
+      },
+    })
+  );
+};
