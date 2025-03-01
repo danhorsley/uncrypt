@@ -9,7 +9,7 @@ run = ["sh", "-c", "python run.py"]
 build = ["sh", "-c", "cd my_game/frontend && npm install && npm run build"]
 
 [workflows]
-runButton = "Run Backend"
+runButton = "Run"
 
 [[workflows.workflow]]
 name = "Run"
