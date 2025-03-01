@@ -9,6 +9,7 @@ import QuoteAttribution from './QuoteAttribution';
 import { createStructuralMatch } from './utils';
 import SaveButton from './SaveButton';
 import WinCelebration from './WinCelebration';
+import About from './About';
 
 function App() {
   // ==== CONTEXT AND APP SETTINGS ====
@@ -18,7 +19,10 @@ function App() {
     currentView, 
     showSettings, 
     showGame,
-    maxMistakes 
+    maxMistakes,
+    isAboutOpen,
+    openAbout,
+    closeAbout
   } = useAppContext();
 
   // ==== STATE DECLARATIONS ====
@@ -276,7 +280,15 @@ function App() {
     <div className={`App-container ${settings.theme === 'dark' ? 'dark-theme' : ''}`}>
       <div className={`App ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`} >
         <div className="game-header">
-          <h1 className="game-title">Decrypto</h1>
+          
+          <button className="about-icon" onClick={openAbout} aria-label="About">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="12" y1="16" x2="12" y2="12"></line>
+    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+  </svg>
+</button>
+<h1 className="game-title">Decrypto</h1>
           <button className="settings-icon" onClick={showSettings} aria-label="Settings">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3"></circle>

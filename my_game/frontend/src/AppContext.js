@@ -37,6 +37,7 @@ export const AppProvider = ({ children }) => {
   });
   
   const [currentView, setCurrentView] = useState('game'); // 'game' or 'settings'
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   // Apply theme whenever settings change
   useEffect(() => {
@@ -77,6 +78,14 @@ export const AppProvider = ({ children }) => {
     showSettings,
     showGame,
     maxMistakes: getMaxMistakes(settings.difficulty)
+  };
+
+  const openAbout = () => {
+    setIsAboutOpen(true);
+  };
+  
+  const closeAbout = () => {
+    setIsAboutOpen(false);
   };
 
   return (

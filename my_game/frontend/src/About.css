@@ -1,0 +1,42 @@
+.game-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    margin-bottom: 10px;
+  }
+  
+  .settings-icon, .about-icon {
+    position: absolute;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #495057;
+    transition: all 0.2s ease;
+  }
+  
+  .settings-icon {
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  
+  .about-icon {
+    left: 0;
+    top: 0;
+  }
+  
+  .settings-icon:hover, .about-icon:hover {
+    background-color: #f0f0f0;
+    color: #007bff;
+  }
+  
+  .settings-icon svg, .about-icon svg {
+    width: 24px;
+    height: 24px;
+  }
