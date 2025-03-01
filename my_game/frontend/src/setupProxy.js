@@ -16,10 +16,12 @@ module.exports = function (app) {
       logLevel: 'debug',
       onError: (err, req, res) => {
         console.error('Proxy error:', err);
-        res.writeHead(500, {
-          'Content-Type': 'text/plain',
-        });
-        res.end('Proxy error: ' + err.message);
+        if (!res.headersSent) {
+          res.writeHead(500, {
+            'Content-Type': 'text/plain',
+          });
+          res.end('Proxy error: ' + err.message);
+        }
       },
       headers: {
         Connection: 'keep-alive'
@@ -39,6 +41,6 @@ module.exports = function (app) {
           proxyRes.headers['set-cookie'] = cookies;
         }
       }
-    }),
+    })
   );
 };

@@ -18,12 +18,7 @@ const QuoteAttribution = ({ hasWon, theme, textColor }) => {
       setIsLoading(true);
       setError(null);
       
-      // Create base URL from current origin or use backend URL directly
-      const baseUrl = window.location.hostname.includes('replit') 
-        ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
-        : '';
-        
-      fetch(`${baseUrl}/get_attribution`, {
+      fetch('/get_attribution', {
         credentials: 'include',
         mode: 'cors',
         headers: {

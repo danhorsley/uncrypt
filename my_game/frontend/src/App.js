@@ -68,15 +68,19 @@ function App() {
   const { playSound } = useSound();
 
   // ==== GAME FUNCTIONS ====
+  // Helper function to get base URL - defined once to avoid recreation on each render
+  const getBaseUrl = () => {
+    // If we're in the Replit environment, use the current hostname
+    if (window.location.hostname.includes('replit')) {
+      return ''; // Use relative URL which will work with the proxy
+    }
+    return ''; // Use relative URL in all cases, let the proxy handle it
+  };
+  
   const startGame = () => {
     console.log('Initiating startGame fetch request');
     
-    // Create base URL from current origin or use backend URL directly
-    const baseUrl = window.location.hostname.includes('replit') 
-      ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
-      : '';
-      
-    fetch(`${baseUrl}/start`, {
+    fetch('/start', {
         credentials: 'include',
         mode: 'cors',
         headers: {
@@ -146,13 +150,8 @@ function App() {
     }
   };
 
-  const submitGuess = (guessedLetter) => {
-    // Create base URL from current origin or use backend URL directly
-    const baseUrl = window.location.hostname.includes('replit') 
-      ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
-      : '';
-      
-    fetch(`${baseUrl}/guess`, {
+  const submitGuess = (guessedLetter) => {    
+    fetch('/guess', {
       method: 'POST',
       credentials: 'include',
       mode: 'cors',
@@ -195,12 +194,7 @@ function App() {
   };
 
   const handleHint = () => {
-    // Create base URL from current origin or use backend URL directly
-    const baseUrl = window.location.hostname.includes('replit') 
-      ? `https://${window.location.hostname.replace('replit.dev', 'replit.dev')}` 
-      : '';
-      
-    fetch(`${baseUrl}/hint`, {
+    fetch('/hint', {
       method: 'POST',
       credentials: 'include',
       mode: 'cors',
