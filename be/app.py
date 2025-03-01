@@ -17,7 +17,7 @@ CORS(
                 "https://*.replit.dev", "https://replit.com",
                 "https://staging.replit.com", "https://firewalledreplit.com",
                 "http://localhost:3000", "http://127.0.0.1:3000",
-                "https://a31dd947-8d2e-46e2-acd6-5467a319da5b-00-3kplm2qa1oqxv.worf.replit.dev/"
+                "https://a31dd947-8d2e-46e2-acd6-5467a319da5b-00-3kplm2qa1oqxv.worf.replit.dev"
             ]
         }
     },
