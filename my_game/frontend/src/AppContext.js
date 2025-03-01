@@ -69,6 +69,13 @@ export const AppProvider = ({ children }) => {
   const showGame = () => {
     setCurrentView('game');
   };
+  const openAbout = () => {
+    setIsAboutOpen(true);
+  };
+  
+  const closeAbout = () => {
+    setIsAboutOpen(false);
+  };
 
   // Context value
   const contextValue = {
@@ -77,16 +84,13 @@ export const AppProvider = ({ children }) => {
     currentView,
     showSettings,
     showGame,
-    maxMistakes: getMaxMistakes(settings.difficulty)
+    maxMistakes: getMaxMistakes(settings.difficulty),
+    isAboutOpen,
+    openAbout,
+    closeAbout
   };
 
-  const openAbout = () => {
-    setIsAboutOpen(true);
-  };
-  
-  const closeAbout = () => {
-    setIsAboutOpen(false);
-  };
+
 
   return (
     <AppContext.Provider value={contextValue}>

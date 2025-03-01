@@ -278,6 +278,7 @@ function App() {
   // Game view
   return (
     <div className={`App-container ${settings.theme === 'dark' ? 'dark-theme' : ''}`}>
+      {isAboutOpen && <About isOpen={isAboutOpen} onClose={closeAbout} />}
       <div className={`App ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`} >
         <div className="game-header">
           

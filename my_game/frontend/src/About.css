@@ -27,8 +27,9 @@
   }
   
   .about-icon {
-    left: 0;
-    top: 0;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
   }
   
   .settings-icon:hover, .about-icon:hover {
@@ -39,4 +40,55 @@
   .settings-icon svg, .about-icon svg {
     width: 24px;
     height: 24px;
+  }
+
+  .about-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+  }
+  
+  .about-container {
+    background-color: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    max-width: 600px;
+    width: 90%;
+    position: relative;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  /* Dark theme specific styling for the About container */
+.about-container.dark-theme {
+    background-color: #333;
+    color: #f8f9fa;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Fix for the close button in dark mode */
+  .about-container.dark-theme .about-close {
+    color: #f8f9fa;
+  }
+  
+  /* Ensure the close button is always clickable */
+  .about-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #495057;
+    z-index: 10;
   }

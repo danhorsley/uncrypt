@@ -9,7 +9,7 @@ function About({ isOpen, onClose }) {
 
   return (
     <div className="about-overlay">
-      <div className={`about-container text-${settings.textColor}`}>
+        <div className={`about-container ${settings.theme === 'dark' ? 'dark-theme' : ''} text-${settings.textColor}`}>
         <button className="about-close" onClick={onClose}>&times;</button>
         <h2>Decrypto</h2>
         <p>
