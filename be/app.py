@@ -6,20 +6,20 @@ import os
 from flask_cors import CORS
 
 app = Flask(__name__)
-# More permissive CORS settings
+# Simplified CORS settings that always work in Replit
 CORS(app, 
      supports_credentials=True,
-     origins=["http://localhost:3000", "https://localhost:3000", "*"],
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
+     resources={r"/*": {"origins": "*"}})
 
 app.secret_key = 'your-secret-key'
 # Make sure session is permanent
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # None allows cross-site requests
-app.config['SESSION_COOKIE_SECURE'] = False     # Set to True in production
+app.config['SESSION_COOKIE_SAMESITE'] = None  # None allows cross-site requests
+app.config['SESSION_COOKIE_SECURE'] = False    
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_PATH'] = '/'
+app.config['SESSION_COOKIE_DOMAIN'] = None    # Allow any domain
 
 paragraphs = [
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
@@ -103,12 +103,22 @@ def start_game():
 
 @app.route('/start', methods=['GET'])
 def start():
-    print("new game starting!")
+    print("==== NEW GAME STARTING ====")
     # Make session permanent
     session.permanent = True
+    
+    # Clear any existing session data to ensure a fresh start
+    session.clear()
+    
+    # Start a new game
     encrypted, encrypted_frequency, unique_original_letters = start_game()
+    
+    # Debug info
     print("Game state created and saved to session:", 'game_state' in session)
-    print("Session ID:", session.get('_id', 'None'))
+    print("Session ID:", session.sid if hasattr(session, 'sid') else 'None')
+    print("Request cookies:", request.cookies)
+    print("Response will include Set-Cookie:", "Yes")
+    
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
     full_frequency = {

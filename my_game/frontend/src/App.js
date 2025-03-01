@@ -69,17 +69,36 @@ function App() {
 
   // ==== GAME FUNCTIONS ====
   const startGame = () => {
+    console.log('Initiating startGame fetch request');
     fetch('/start', {
         credentials: 'include',
-        mode: 'cors'
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
       })
       .then(res => {
         console.log('Response status:', res.status);
-          console.log('Response headers:', [...res.headers.entries()]);
+        console.log('Response headers:', [...res.headers.entries()]);
+        console.log('Response cookies:', document.cookie);
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         return res.json();
       })
+      .catch(err => {
+        console.error('Error fetching start data:', err);
+        // Try again with a different approach if the first attempt failed
+        if (err.message.includes('HTTP error') || err.message.includes('Failed to fetch')) {
+          console.log('Retrying with alternative fetch approach...');
+          return fetch('/start', {
+            credentials: 'include',
+            cache: 'no-store'
+          }).then(res => res.json());
+        }
+        throw err;
+      })
       .then(data => {
+        console.log('Received data from server:', data);
         // Apply hardcore mode if enabled
         let encryptedText = data.encrypted_paragraph;
         let displayText = data.display;
@@ -227,8 +246,10 @@ function App() {
   // ==== EFFECTS ====
   // Initialize game on component mount
   useEffect(() => {
+    // Only start game once on component mount
     startGame();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array to ensure it only runs once
 
   // Keyboard input handling
   useKeyboardInput({

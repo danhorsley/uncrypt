@@ -7,9 +7,25 @@ module.exports = function (app) {
     createProxyMiddleware({
       target: "http://0.0.0.0:8000",
       changeOrigin: true,
-      methods: ["GET", "POST", "PUT", "DELETE"],
-      cookieDomainRewrite: "0.0.0.0",
-      withCredentials: true
+      cookieDomainRewrite: '',
+      withCredentials: true,
+      headers: {
+        Connection: 'keep-alive'
+      },
+      onProxyRes: function(proxyRes, req, res) {
+        // Log the response headers for debugging
+        console.log('ProxyRes headers:', proxyRes.headers);
+        
+        // Ensure cookies are properly passed
+        if (proxyRes.headers['set-cookie']) {
+          const cookies = proxyRes.headers['set-cookie'].map(cookie => 
+            cookie.replace(/Domain=[^;]+;/i, '')
+                 .replace(/SameSite=[^;]+;/i, 'SameSite=None;')
+                 .replace(/Secure/i, '')
+          );
+          proxyRes.headers['set-cookie'] = cookies;
+        }
+      }
     }),
   );
 };
