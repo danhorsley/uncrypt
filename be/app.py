@@ -4,6 +4,12 @@ from collections import Counter
 import csv
 import os
 from flask_cors import CORS
+import uuid
+import logging
+logging.basicConfig(filename='app.log', level=logging.DEBUG)
+
+
+game_states={}
 
 app = Flask(__name__)
 # Improved CORS settings with explicit Replit domains
@@ -17,22 +23,25 @@ CORS(
                 "https://*.replit.dev", "https://replit.com",
                 "https://staging.replit.com", "https://firewalledreplit.com",
                 "http://localhost:3000", "http://127.0.0.1:3000",
-                "https://a31dd947-8d2e-46e2-acd6-5467a319da5b-00-3kplm2qa1oqxv.worf.replit.dev"
+                #"https://a31dd947-8d2e-46e2-acd6-5467a319da5b-00-3kplm2qa1oqxv.worf.replit.dev"
+                "https://f59a0a10-1712-4a08-821f-e6a8198ef815-00-pwp2q7nwy70f.riker.replit.dev/"
             ]
         }
     },
-    allow_headers=["Content-Type", "X-Requested-With", "Accept"],
-    expose_headers=["Access-Control-Allow-Origin"])
+    allow_headers=["Content-Type", "X-Requested-With", "Accept", "X-Game-Id"],
+    expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"]
+)
 
 app.secret_key = 'your-secret-key'
 # Make sure session is permanent
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
-app.config['SESSION_COOKIE_SAMESITE'] = None  # None allows cross-site requests
-app.config['SESSION_COOKIE_SECURE'] = False
-app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow any domain
+app.config['SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
+#app.config['SESSION_COOKIE_SECURE'] = True  # Set to True if using HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 paragraphs = [
     "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
@@ -89,6 +98,7 @@ def get_unique_letters(text):
 def start_game():
     # Initialize the quote loader
     #quote_loader = QuoteLoader('quotes.csv')
+    
     current_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(current_dir, 'curated.csv')
     quote_loader = QuoteLoader(csv_path)
@@ -113,6 +123,17 @@ def start_game():
     }
     return encrypted, encrypted_frequency, unique_original_letters
 
+recent_logs = []
+def log_message(message):
+    recent_logs.append(message)
+    # Keep only the last 100 logs
+    if len(recent_logs) > 100:
+        recent_logs.pop(0)
+    print(message)  # Also print to console
+
+@app.route('/debug_logs', methods=['GET'])
+def get_logs():
+    return jsonify(recent_logs)
 
 @app.route('/start', methods=['GET'])
 def start():
@@ -126,11 +147,12 @@ def start():
     # Start a new game
     encrypted, encrypted_frequency, unique_original_letters = start_game()
 
-    # Debug info
-    print("Game state created and saved to session:", 'game_state' in session)
-    print("Session ID:", session.sid if hasattr(session, 'sid') else 'None')
-    print("Request cookies:", request.cookies)
-    print("Response will include Set-Cookie:", "Yes")
+    # Generate a unique game ID
+    import uuid
+    game_id = str(uuid.uuid4())
+
+    # Store the game state in the in-memory dictionary
+    game_states[game_id] = session.get('game_state')
 
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
@@ -145,81 +167,152 @@ def start():
         'letter_frequency': full_frequency,
         'display': display,
         'original_letters': unique_original_letters,
-        # Add empty attributions that will be populated when game is won
         'major_attribution': '',
-        'minor_attribution': ''
+        'minor_attribution': '',
+        'game_id': game_id  # Send the game ID to client
     }
 
     return jsonify(ret)
 
+# Then update the guess endpoint to use the game ID
+# Update these parts of your app.py
 
+# 1. Modify the guess endpoint to prioritize game_id and prevent session restarts
 @app.route('/guess', methods=['POST'])
 def guess():
-    print("guess logged")
-    print("Session cookie present:",
-          request.cookies.get('session') is not None)
-    print("Session ID:", session.get('_id', 'None'))
-    print("Game state in session:", 'game_state' in session)
+    data = request.get_json()
+    logging.debug(f"Received request data for /guess: {data}")
 
-    # Check if game_state exists in the session
-    if 'game_state' not in session:
-        print("game_state not found in session")
-        # If not, start a new game
+    # Extract game_id from the request body
+    game_id = data.get('game_id')
+    logging.debug(f"Game ID from request: {game_id}")
+
+    # Also check headers for game_id (this is for the proxy setup)
+    if not game_id and request.headers.get('X-Game-Id'):
+        game_id = request.headers.get('X-Game-Id')
+        logging.debug(f"Game ID from headers: {game_id}")
+
+    # First try to get game state from the game_states dictionary
+    game_state = None
+    if game_id and game_id in game_states:
+        logging.debug(f"Found game state for game_id: {game_id}")
+        game_state = game_states[game_id]
+
+    # If not found in dictionary, try the session
+    if not game_state:
+        game_state = session.get('game_state')
+        logging.debug(f"Game state from session: {'Found' if game_state else 'Not found'}")
+
+    # If still no game state, we need to create a new game
+    if not game_state:
+        logging.debug("No game state found - starting new game")
         encrypted, encrypted_frequency, unique_original_letters = start_game()
+
+        # Generate a new game_id
+        new_game_id = str(uuid.uuid4())
+        game_states[new_game_id] = session.get('game_state')
+
         return jsonify({
             'display': get_display(encrypted, [], {}),
             'mistakes': 0,
             'correctly_guessed': [],
-            'error': 'Session expired, a new game was started'
+            'error': 'Session expired, a new game was started',
+            'game_id': new_game_id  # Send the new game_id to the client
         })
 
-    data = request.get_json()
-    print("data requested")
-    print(data)
+    # Rest of function remains unchanged
     encrypted_letter = data['encrypted_letter']
     guessed_letter = data['guessed_letter']
-    game_state = session['game_state']
 
+    # Process the guess
     if validate_guess(encrypted_letter, guessed_letter,
-                      game_state['reverse_mapping'],
-                      game_state['correctly_guessed'], game_state['mistakes']):
+                     game_state['reverse_mapping'],
+                     game_state['correctly_guessed'],
+                     game_state['mistakes']):
+        # Correct guess
         game_state['mistakes'] = game_state['mistakes']
     else:
+        # Incorrect guess
         game_state['mistakes'] += 1
 
     display = get_display(game_state['encrypted_paragraph'],
-                          game_state['correctly_guessed'],
-                          game_state['reverse_mapping'])
+                         game_state['correctly_guessed'],
+                         game_state['reverse_mapping'])
+
+    # Save state in both session and game_states
     session['game_state'] = game_state
-    return jsonify({
+    if game_id:
+        game_states[game_id] = game_state
+
+    response_data = {
         'display': display,
         'mistakes': game_state['mistakes'],
         'correctly_guessed': game_state['correctly_guessed']
-    })
+    }
 
+    logging.debug(f"Returning response: {response_data}")
+    return jsonify(response_data)
 
 @app.route('/hint', methods=['POST'])
 def hint():
-    # Check if game_state exists in the session
-    if 'game_state' not in session:
-        # If not, start a new game
+    # Log the received data
+    data = request.get_json() or {}
+    logging.debug(f"Received request data for /hint: {data}")
+
+    # Extract game_id from the request body
+    game_id = data.get('game_id')
+    logging.debug(f"Game ID from request body: {game_id}")
+
+    # Also check headers for game_id
+    if not game_id and request.headers.get('X-Game-Id'):
+        game_id = request.headers.get('X-Game-Id')
+        logging.debug(f"Game ID from headers: {game_id}")
+
+    # Initialize game_state as None
+    game_state = None
+
+    # First try to get game state from the game_states dictionary
+    if game_id and game_id in game_states:
+        logging.debug(f"Found game state for game_id: {game_id}")
+        game_state = game_states[game_id]
+
+    # If not found in dictionary, try the session
+    if not game_state:
+        game_state = session.get('game_state')
+        logging.debug(f"Game state from session: {'Found' if game_state else 'Not found'}")
+
+    # If still no game state, we need to create a new game
+    if not game_state:
+        logging.debug("No game state found - starting new game")
         encrypted, encrypted_frequency, unique_original_letters = start_game()
+
+        # Generate a new game_id
+        new_game_id = str(uuid.uuid4())
+        game_states[new_game_id] = session.get('game_state')
+
+        # Return the new game with session expired error
         return jsonify({
             'display': get_display(encrypted, [], {}),
             'mistakes': 0,
             'correctly_guessed': [],
-            'error': 'Session expired, a new game was started'
+            'error': 'Session expired, a new game was started',
+            'game_id': new_game_id  # Send the new game_id to the client
         })
 
-    game_state = session['game_state']
+    # Process the hint request
     display, mistakes, correctly_guessed = provide_hint(game_state)
+
+    # Save state in both session and game_states
     session['game_state'] = game_state
+    if game_id:
+        game_states[game_id] = game_state
+
+    # Return the results
     return jsonify({
         'display': display,
         'mistakes': mistakes,
         'correctly_guessed': correctly_guessed
     })
-
 
 def validate_guess(encrypted_letter, guessed_letter, reverse_mapping,
                    correctly_guessed, mistakes):
@@ -253,25 +346,56 @@ def provide_hint(game_state):
     return None, game_state['mistakes']
 
 
+@app.route('/get_attribution', methods=['OPTIONS'])
+def options_get_attribution():
+    # Handle preflight request for CORS
+    response = app.make_default_options_response()
+    headers = response.headers
+    headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+    headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Game-Id'
+    headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
+
 @app.route('/get_attribution', methods=['GET'])
 def get_attribution():
-    game_state = session['game_state']
+    # Extract game_id from the request parameters
+    game_id = request.args.get('game_id')
+    logging.debug(f"Get attribution request for game_id: {game_id}")
 
-    # Check if the game is completed (all letters guessed)
-    encrypted = game_state['encrypted_paragraph']
-    unique_encrypted_letters = len(set(c for c in encrypted if c.isalpha()))
-    correctly_guessed = game_state['correctly_guessed']
+    # Also check headers for game_id
+    if not game_id and request.headers.get('X-Game-Id'):
+        game_id = request.headers.get('X-Game-Id')
+        logging.debug(f"Game ID from headers: {game_id}")
 
-    # Only return the attribution if the game is won
-    if len(correctly_guessed) >= unique_encrypted_letters:
+    # Initialize game_state as None
+    game_state = None
+
+    # First try to get game state from the game_states dictionary
+    if game_id and game_id in game_states:
+        logging.debug(f"Found game state for game_id: {game_id}")
+        game_state = game_states[game_id]
+
+    # If not found in dictionary, try the session
+    if not game_state:
+        game_state = session.get('game_state')
+        logging.debug(f"Game state from session: {'Found' if game_state else 'Not found'}")
+
+    # If still no game state, return empty attribution
+    if not game_state:
+        logging.debug("No game state found for attribution request")
         return jsonify({
-            'major_attribution': game_state['major_attribution'],
-            'minor_attribution': game_state['minor_attribution']
+            'major_attribution': '',
+            'minor_attribution': '',
+            'error': 'Game not found or session expired'
         })
-    else:
-        return jsonify({'error': 'Game not completed yet'}), 400
 
-
+    # Return the attribution data
+    return jsonify({
+        'major_attribution': game_state.get('major_attribution', ''),
+        'minor_attribution': game_state.get('minor_attribution', '')
+    })
+    
 @app.route('/save_quote', methods=['POST'])
 def save_quote():
     game_state = session.get('game_state')
