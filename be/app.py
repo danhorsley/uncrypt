@@ -25,6 +25,7 @@ CORS(
                 "http://localhost:3000", "http://127.0.0.1:3000",
                 #"https://a31dd947-8d2e-46e2-acd6-5467a319da5b-00-3kplm2qa1oqxv.worf.replit.dev"
                 "https://f59a0a10-1712-4a08-821f-e6a8198ef815-00-pwp2q7nwy70f.riker.replit.dev",
+                "wss://f59a0a10-1712-4a08-821f-e6a8198ef815-00-pwp2q7nwy70f.riker.replit.dev:3000",
                 # Include all origins with wildcard as a fallback
                 "*"
             ]
