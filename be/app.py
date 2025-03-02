@@ -91,8 +91,8 @@ def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
 
 
 def get_letter_frequency(text):
+    """Calculate frequency of each letter in a text."""
     return Counter(c for c in text.upper() if c.isalpha())
-
 
 def get_unique_letters(text):
     return sorted(set(c for c in text.upper() if c.isalpha()))
@@ -167,12 +167,12 @@ def start():
     ret = {
         'encrypted_paragraph': encrypted,
         'mistakes': 0,
-        'letter_frequency': full_frequency,
+        'letter_frequency': full_frequency,  # This should be the frequency of encrypted letters
         'display': display,
         'original_letters': unique_original_letters,
         'major_attribution': '',
         'minor_attribution': '',
-        'game_id': game_id  # Send the game ID to client
+        'game_id': game_id
     }
 
     return jsonify(ret)
