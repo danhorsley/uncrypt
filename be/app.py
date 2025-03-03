@@ -86,7 +86,7 @@ def encrypt_paragraph(paragraph, mapping):
 
 def get_display(encrypted_paragraph, correctly_guessed, reverse_mapping):
     return ''.join(reverse_mapping[char] if char in
-                   correctly_guessed else '?' if char.isalpha() else char
+                   correctly_guessed else '█' if char.isalpha() else char
                    for char in encrypted_paragraph)
 
 
