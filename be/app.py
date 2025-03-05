@@ -6,10 +6,17 @@ import os
 from flask_cors import CORS
 import uuid
 import logging
-logging.basicConfig(filename='app.log', level=logging.DEBUG)
+import sys
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler(sys.stdout)
+    ])
 
-game_states={}
+game_states = {}
 
 app = Flask(__name__)
 # Improved CORS settings with explicit Replit domains
@@ -19,10 +26,15 @@ CORS(
     resources={
         r"/*": {
             "origins": [
-                "https://*.replit.app", "https://*.repl.co",
-                "https://*.replit.dev", "https://replit.com", "https://*.replit.com",
-                "https://staging.replit.com", "https://firewalledreplit.com",
-                "http://localhost:3000", "http://127.0.0.1:3000",
+                "https://*.replit.app",
+                "https://*.repl.co",
+                "https://*.replit.dev",
+                "https://replit.com",
+                "https://*.replit.com",
+                "https://staging.replit.com",
+                "https://firewalledreplit.com",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
                 #"https://a31dd947-8d2e-46e2-acd6-5467a319da5b-00-3kplm2qa1oqxv.worf.replit.dev"
                 "https://f59a0a10-1712-4a08-821f-e6a8198ef815-00-pwp2q7nwy70f.riker.replit.dev",
                 "wss://f59a0a10-1712-4a08-821f-e6a8198ef815-00-pwp2q7nwy70f.riker.replit.dev:3000",
@@ -32,8 +44,7 @@ CORS(
         }
     },
     allow_headers=["Content-Type", "X-Requested-With", "Accept", "X-Game-Id"],
-    expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"]
-)
+    expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"])
 
 app.secret_key = 'your-secret-key'
 # Make sure session is permanent
@@ -42,7 +53,8 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow any domain
-app.config['SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
+app.config[
+    'SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
 #app.config['SESSION_COOKIE_SECURE'] = True  # Set to True if using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
@@ -94,6 +106,7 @@ def get_letter_frequency(text):
     """Calculate frequency of each letter in a text."""
     return Counter(c for c in text.upper() if c.isalpha())
 
+
 def get_unique_letters(text):
     return sorted(set(c for c in text.upper() if c.isalpha()))
 
@@ -101,6 +114,8 @@ def get_unique_letters(text):
 # start_game function moved above and modified
 
 recent_logs = []
+
+
 def log_message(message):
     recent_logs.append(message)
     # Keep only the last 100 logs
@@ -108,9 +123,17 @@ def log_message(message):
         recent_logs.pop(0)
     print(message)  # Also print to console
 
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    logging.info("Health check endpoint accessed")
+    return jsonify({"status": "ok", "message": "Service is running"})
+
+
 @app.route('/debug_logs', methods=['GET'])
 def get_logs():
     return jsonify(recent_logs)
+
 
 @app.route('/debug_client', methods=['POST'])
 def debug_client():
@@ -118,12 +141,13 @@ def debug_client():
     log_message(f"Debug from client: {data}")
     return jsonify({"status": "logged"})
 
+
 def start_game(max_length=None):
     # Initialize the quote loader
     current_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(current_dir, 'curated.csv')
     quote_loader = QuoteLoader(csv_path)
-    
+
     # Get a quote that matches the length criteria if specified
     if max_length:
         # Try to find a quote under the maximum length (with a reasonable number of attempts)
@@ -136,6 +160,7 @@ def start_game(max_length=None):
         quote_data = quote_loader.get_random_quote()
 
     paragraph = quote_data["Quote"]
+
     mapping = generate_mapping()
     reverse_mapping = {v: k for k, v in mapping.items()}
     encrypted = encrypt_paragraph(paragraph, mapping)
@@ -154,6 +179,7 @@ def start_game(max_length=None):
     }
     return encrypted, encrypted_frequency, unique_original_letters
 
+
 @app.route('/start', methods=['GET'])
 def start():
     print("==== NEW SHORT GAME STARTING ====")
@@ -164,7 +190,8 @@ def start():
     session.clear()
 
     # Start a new game with shorter quotes (80 chars should fit on most mobile screens in landscape)
-    encrypted, encrypted_frequency, unique_original_letters = start_game(max_length=80)
+    encrypted, encrypted_frequency, unique_original_letters = start_game(
+        max_length=80)
 
     # Generate a unique game ID
     import uuid
@@ -183,7 +210,8 @@ def start():
     ret = {
         'encrypted_paragraph': encrypted,
         'mistakes': 0,
-        'letter_frequency': full_frequency,  # This should be the frequency of encrypted letters
+        'letter_frequency':
+        full_frequency,  # This should be the frequency of encrypted letters
         'display': display,
         'original_letters': unique_original_letters,
         'major_attribution': '',
@@ -192,6 +220,7 @@ def start():
     }
 
     return jsonify(ret)
+
 
 @app.route('/longstart', methods=['GET'])
 def longstart():
@@ -222,7 +251,8 @@ def longstart():
     ret = {
         'encrypted_paragraph': encrypted,
         'mistakes': 0,
-        'letter_frequency': full_frequency,  # This should be the frequency of encrypted letters
+        'letter_frequency':
+        full_frequency,  # This should be the frequency of encrypted letters
         'display': display,
         'original_letters': unique_original_letters,
         'major_attribution': '',
@@ -232,8 +262,10 @@ def longstart():
 
     return jsonify(ret)
 
+
 # Then update the guess endpoint to use the game ID
 # Update these parts of your app.py
+
 
 # 1. Modify the guess endpoint to prioritize game_id and prevent session restarts
 @app.route('/guess', methods=['POST'])
@@ -259,7 +291,9 @@ def guess():
     # If not found in dictionary, try the session
     if not game_state:
         game_state = session.get('game_state')
-        logging.debug(f"Game state from session: {'Found' if game_state else 'Not found'}")
+        logging.debug(
+            f"Game state from session: {'Found' if game_state else 'Not found'}"
+        )
 
     # If still no game state, we need to create a new game
     if not game_state:
@@ -284,9 +318,8 @@ def guess():
 
     # Process the guess
     if validate_guess(encrypted_letter, guessed_letter,
-                     game_state['reverse_mapping'],
-                     game_state['correctly_guessed'],
-                     game_state['mistakes']):
+                      game_state['reverse_mapping'],
+                      game_state['correctly_guessed'], game_state['mistakes']):
         # Correct guess
         game_state['mistakes'] = game_state['mistakes']
     else:
@@ -294,8 +327,8 @@ def guess():
         game_state['mistakes'] += 1
 
     display = get_display(game_state['encrypted_paragraph'],
-                         game_state['correctly_guessed'],
-                         game_state['reverse_mapping'])
+                          game_state['correctly_guessed'],
+                          game_state['reverse_mapping'])
 
     # Save state in both session and game_states
     session['game_state'] = game_state
@@ -310,6 +343,7 @@ def guess():
 
     logging.debug(f"Returning response: {response_data}")
     return jsonify(response_data)
+
 
 @app.route('/hint', methods=['POST'])
 def hint():
@@ -337,7 +371,9 @@ def hint():
     # If not found in dictionary, try the session
     if not game_state:
         game_state = session.get('game_state')
-        logging.debug(f"Game state from session: {'Found' if game_state else 'Not found'}")
+        logging.debug(
+            f"Game state from session: {'Found' if game_state else 'Not found'}"
+        )
 
     # If still no game state, we need to create a new game
     if not game_state:
@@ -371,6 +407,7 @@ def hint():
         'mistakes': mistakes,
         'correctly_guessed': correctly_guessed
     })
+
 
 def validate_guess(encrypted_letter, guessed_letter, reverse_mapping,
                    correctly_guessed, mistakes):
@@ -415,6 +452,7 @@ def options_get_attribution():
     headers['Access-Control-Allow-Credentials'] = 'true'
     return response
 
+
 @app.route('/get_attribution', methods=['GET'])
 def get_attribution():
     # Extract game_id from the request parameters
@@ -437,7 +475,9 @@ def get_attribution():
     # If not found in dictionary, try the session
     if not game_state:
         game_state = session.get('game_state')
-        logging.debug(f"Game state from session: {'Found' if game_state else 'Not found'}")
+        logging.debug(
+            f"Game state from session: {'Found' if game_state else 'Not found'}"
+        )
 
     # If still no game state, return empty attribution
     if not game_state:
@@ -453,7 +493,8 @@ def get_attribution():
         'major_attribution': game_state.get('major_attribution', ''),
         'minor_attribution': game_state.get('minor_attribution', '')
     })
-    
+
+
 @app.route('/save_quote', methods=['POST'])
 def save_quote():
     game_state = session.get('game_state')
@@ -503,4 +544,9 @@ def save_quote():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8000)
+    logging.info("Starting application server")
+    # In production, debug should be False
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    logging.info(f"Debug mode: {debug_mode}")
+    logging.info("Running on host: 0.0.0.0, port: 8000")
+    app.run(debug=debug_mode, host='0.0.0.0', port=8000)
