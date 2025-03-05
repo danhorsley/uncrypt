@@ -7,6 +7,15 @@ from flask_cors import CORS
 import uuid
 import logging
 import sys
+import sqlite3
+from contextlib import contextmanager
+
+# Import configuration
+try:
+    from .config import DATABASE_PATH, ENV
+except ImportError:
+    # Fallback for direct execution
+    from config import DATABASE_PATH, ENV
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,6 +26,46 @@ logging.basicConfig(
     ])
 
 game_states = {}
+
+# Set up database connection
+@contextmanager
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row  # This makes the rows accessible by column name
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+# Initialize the database
+def init_db():
+    logging.info(f"Initializing SQLite database at {DATABASE_PATH}")
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Create tables
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                username TEXT UNIQUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS game_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
+                score INTEGER,
+                mistakes INTEGER,
+                completed BOOLEAN,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        conn.commit()
+        logging.info("Database initialized successfully")
+
+# Initialize the database on startup
+init_db()
 
 app = Flask(__name__)
 # Improved CORS settings with explicit Replit domains
@@ -376,6 +425,63 @@ def hint():
         )
 
     # If still no game state, we need to create a new game
+
+
+# User and score tracking functions
+def register_user(username):
+    """Register a new user and return their ID"""
+    user_id = str(uuid.uuid4())
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('INSERT INTO users (id, username) VALUES (?, ?)', 
+                          (user_id, username))
+            conn.commit()
+            return user_id
+    except sqlite3.IntegrityError:
+        # Username already exists
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+            result = cursor.fetchone()
+            return result['id'] if result else None
+
+def save_game_score(user_id, score, mistakes, completed=True):
+    """Save a game score for a user"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO game_scores (user_id, score, mistakes, completed) VALUES (?, ?, ?, ?)',
+            (user_id, score, mistakes, completed)
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+def get_user_scores(user_id, limit=10):
+    """Get recent scores for a user"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT * FROM game_scores WHERE user_id = ? ORDER BY created_at DESC LIMIT ?',
+            (user_id, limit)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+def get_leaderboard(limit=10):
+    """Get the top scores across all users"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT g.*, u.username 
+            FROM game_scores g
+            JOIN users u ON g.user_id = u.id
+            WHERE g.completed = 1
+            ORDER BY g.score DESC, g.mistakes ASC
+            LIMIT ?
+        ''', (limit,))
+        return [dict(row) for row in cursor.fetchall()]
+
+
     if not game_state:
         logging.debug("No game state found - starting new game")
         encrypted, encrypted_frequency, unique_original_letters = start_game()
