@@ -8,7 +8,15 @@ import uuid
 import logging
 import sys
 import sqlite3
-from contextlib import contextmanager
+from .init_db import init_db
+from .login import login_bp
+
+ENV = os.environ.get('FLASK_ENV', 'development')
+# Database path - using different files for dev and prod
+if ENV == 'production':
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'game.db')  # Production database
+else:
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dev_game.db')  # Development database
 
 # Import configuration
 try:
@@ -26,46 +34,6 @@ logging.basicConfig(
     ])
 
 game_states = {}
-
-
-# Set up database connection
-@contextmanager
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # This makes the rows accessible by column name
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-
-# Initialize the database
-def init_db():
-    logging.info(f"Initializing SQLite database at {DATABASE_PATH}")
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        # Create tables
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                username TEXT UNIQUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS game_scores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT,
-                score INTEGER,
-                mistakes INTEGER,
-                completed BOOLEAN,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        conn.commit()
-        logging.info("Database initialized successfully")
-
 
 # Initialize the database on startup
 init_db()
@@ -109,13 +77,8 @@ app.config[
     'SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
 #app.config['SESSION_COOKIE_SECURE'] = True  # Set to True if using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-
-paragraphs = [
-    "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
-    "A JOURNEY OF A THOUSAND MILES BEGINS WITH A SINGLE STEP", "TEST",
-    "LEONARDO DA VINCI WAS BORN IN 1452 NEAR FLORENCE",
-    "ABRAHAM LINCOLN DELIVERED THE GETTYSBURG ADDRESS IN 1863"
-]
+# Register the login blueprint
+app.register_blueprint(login_bp)
 
 
 class QuoteLoader:
