@@ -112,6 +112,12 @@ def log_message(message):
 def get_logs():
     return jsonify(recent_logs)
 
+@app.route('/debug_client', methods=['POST'])
+def debug_client():
+    data = request.get_json()
+    log_message(f"Debug from client: {data}")
+    return jsonify({"status": "logged"})
+
 def start_game(max_length=None):
     # Initialize the quote loader
     current_dir = os.path.dirname(os.path.abspath(__file__))
