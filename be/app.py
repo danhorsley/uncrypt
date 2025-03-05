@@ -98,14 +98,36 @@ def get_unique_letters(text):
     return sorted(set(c for c in text.upper() if c.isalpha()))
 
 
-def start_game():
+# start_game function moved above and modified
+
+recent_logs = []
+def log_message(message):
+    recent_logs.append(message)
+    # Keep only the last 100 logs
+    if len(recent_logs) > 100:
+        recent_logs.pop(0)
+    print(message)  # Also print to console
+
+@app.route('/debug_logs', methods=['GET'])
+def get_logs():
+    return jsonify(recent_logs)
+
+def start_game(max_length=None):
     # Initialize the quote loader
-    #quote_loader = QuoteLoader('quotes.csv')
-    
     current_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(current_dir, 'curated.csv')
     quote_loader = QuoteLoader(csv_path)
-    quote_data = quote_loader.get_random_quote()
+    
+    # Get a quote that matches the length criteria if specified
+    if max_length:
+        # Try to find a quote under the maximum length (with a reasonable number of attempts)
+        for _ in range(20):  # Try 20 times to find a suitable quote
+            quote_data = quote_loader.get_random_quote()
+            if len(quote_data["Quote"]) <= max_length:
+                break
+    else:
+        # Get any random quote if no length constraint
+        quote_data = quote_loader.get_random_quote()
 
     paragraph = quote_data["Quote"]
     mapping = generate_mapping()
@@ -126,28 +148,55 @@ def start_game():
     }
     return encrypted, encrypted_frequency, unique_original_letters
 
-recent_logs = []
-def log_message(message):
-    recent_logs.append(message)
-    # Keep only the last 100 logs
-    if len(recent_logs) > 100:
-        recent_logs.pop(0)
-    print(message)  # Also print to console
-
-@app.route('/debug_logs', methods=['GET'])
-def get_logs():
-    return jsonify(recent_logs)
-
 @app.route('/start', methods=['GET'])
 def start():
-    print("==== NEW GAME STARTING ====")
+    print("==== NEW SHORT GAME STARTING ====")
     # Make session permanent
     session.permanent = True
 
     # Clear any existing session data to ensure a fresh start
     session.clear()
 
-    # Start a new game
+    # Start a new game with shorter quotes (80 chars should fit on most mobile screens in landscape)
+    encrypted, encrypted_frequency, unique_original_letters = start_game(max_length=80)
+
+    # Generate a unique game ID
+    import uuid
+    game_id = str(uuid.uuid4())
+
+    # Store the game state in the in-memory dictionary
+    game_states[game_id] = session.get('game_state')
+
+    display = get_display(encrypted, [], {})
+    # Extend frequency with 0 for unused letters
+    full_frequency = {
+        chr(65 + i): encrypted_frequency.get(chr(65 + i), 0)
+        for i in range(26)
+    }
+
+    ret = {
+        'encrypted_paragraph': encrypted,
+        'mistakes': 0,
+        'letter_frequency': full_frequency,  # This should be the frequency of encrypted letters
+        'display': display,
+        'original_letters': unique_original_letters,
+        'major_attribution': '',
+        'minor_attribution': '',
+        'game_id': game_id
+    }
+
+    return jsonify(ret)
+
+@app.route('/longstart', methods=['GET'])
+def longstart():
+    print("==== NEW LONG GAME STARTING ====")
+    # Make session permanent
+    session.permanent = True
+
+    # Clear any existing session data to ensure a fresh start
+    session.clear()
+
+    # Start a new game with no length restriction
     encrypted, encrypted_frequency, unique_original_letters = start_game()
 
     # Generate a unique game ID
