@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, request, session, render_template
 import random
 from collections import Counter
 import csv
@@ -27,6 +27,7 @@ logging.basicConfig(
 
 game_states = {}
 
+
 # Set up database connection
 @contextmanager
 def get_db_connection():
@@ -36,6 +37,7 @@ def get_db_connection():
         yield conn
     finally:
         conn.close()
+
 
 # Initialize the database
 def init_db():
@@ -63,6 +65,7 @@ def init_db():
         ''')
         conn.commit()
         logging.info("Database initialized successfully")
+
 
 # Initialize the database on startup
 init_db()
@@ -173,6 +176,11 @@ def log_message(message):
     print(message)  # Also print to console
 
 
+@app.route('/privacy')
+def privacy_policy():
+    return render_template('privacy.html')
+
+
 @app.route('/health', methods=['GET'])
 def health_check():
     logging.info("Health check endpoint accessed")
@@ -240,7 +248,7 @@ def start():
 
     # Start a new game with shorter quotes (80 chars should fit on most mobile screens in landscape)
     encrypted, encrypted_frequency, unique_original_letters = start_game(
-        max_length=80)
+        max_length=65)
 
     # Generate a unique game ID
     import uuid
@@ -424,64 +432,6 @@ def hint():
             f"Game state from session: {'Found' if game_state else 'Not found'}"
         )
 
-    # If still no game state, we need to create a new game
-
-
-# User and score tracking functions
-def register_user(username):
-    """Register a new user and return their ID"""
-    user_id = str(uuid.uuid4())
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('INSERT INTO users (id, username) VALUES (?, ?)', 
-                          (user_id, username))
-            conn.commit()
-            return user_id
-    except sqlite3.IntegrityError:
-        # Username already exists
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
-            result = cursor.fetchone()
-            return result['id'] if result else None
-
-def save_game_score(user_id, score, mistakes, completed=True):
-    """Save a game score for a user"""
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            'INSERT INTO game_scores (user_id, score, mistakes, completed) VALUES (?, ?, ?, ?)',
-            (user_id, score, mistakes, completed)
-        )
-        conn.commit()
-        return cursor.lastrowid
-
-def get_user_scores(user_id, limit=10):
-    """Get recent scores for a user"""
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            'SELECT * FROM game_scores WHERE user_id = ? ORDER BY created_at DESC LIMIT ?',
-            (user_id, limit)
-        )
-        return [dict(row) for row in cursor.fetchall()]
-
-def get_leaderboard(limit=10):
-    """Get the top scores across all users"""
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT g.*, u.username 
-            FROM game_scores g
-            JOIN users u ON g.user_id = u.id
-            WHERE g.completed = 1
-            ORDER BY g.score DESC, g.mistakes ASC
-            LIMIT ?
-        ''', (limit,))
-        return [dict(row) for row in cursor.fetchall()]
-
-
     if not game_state:
         logging.debug("No game state found - starting new game")
         encrypted, encrypted_frequency, unique_original_letters = start_game()
@@ -513,6 +463,64 @@ def get_leaderboard(limit=10):
         'mistakes': mistakes,
         'correctly_guessed': correctly_guessed
     })
+
+
+# User and score tracking functions
+def register_user(username):
+    """Register a new user and return their ID"""
+    user_id = str(uuid.uuid4())
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('INSERT INTO users (id, username) VALUES (?, ?)',
+                           (user_id, username))
+            conn.commit()
+            return user_id
+    except sqlite3.IntegrityError:
+        # Username already exists
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM users WHERE username = ?',
+                           (username, ))
+            result = cursor.fetchone()
+            return result['id'] if result else None
+
+
+def save_game_score(user_id, score, mistakes, completed=True):
+    """Save a game score for a user"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO game_scores (user_id, score, mistakes, completed) VALUES (?, ?, ?, ?)',
+            (user_id, score, mistakes, completed))
+        conn.commit()
+        return cursor.lastrowid
+
+
+def get_user_scores(user_id, limit=10):
+    """Get recent scores for a user"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT * FROM game_scores WHERE user_id = ? ORDER BY created_at DESC LIMIT ?',
+            (user_id, limit))
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_leaderboard(limit=10):
+    """Get the top scores across all users"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT g.*, u.username 
+            FROM game_scores g
+            JOIN users u ON g.user_id = u.id
+            WHERE g.completed = 1
+            ORDER BY g.score DESC, g.mistakes ASC
+            LIMIT ?
+        ''', (limit, ))
+        return [dict(row) for row in cursor.fetchall()]
 
 
 def validate_guess(encrypted_letter, guessed_letter, reverse_mapping,
