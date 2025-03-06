@@ -27,7 +27,7 @@ def signup():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             # Check if email already exists
-            cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+            cursor.execute('SELECT user_id FROM users WHERE email = ?', (email,))
             existing_email = cursor.fetchone()
 
             if existing_email:
@@ -108,7 +108,7 @@ def check_username():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+            cursor.execute('SELECT user_id FROM users WHERE username = ?', (username,))
             user = cursor.fetchone()
 
             if user:
