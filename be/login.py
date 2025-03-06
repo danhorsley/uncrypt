@@ -61,7 +61,7 @@ def login():
     data = request.get_json()
     email = data.get('username')
     password = data.get('password')
-    print(email, password)
+    #print(email, password)
     if not email or not password:
         return jsonify({"error": "Missing email or password"}), 400
 
@@ -71,7 +71,7 @@ def login():
             # Find user with matching email
             cursor.execute('SELECT user_id, email, password_hash, username FROM users WHERE email = ?', (email, ))
             user = cursor.fetchone()
-            print(user['email'],user['password_hash'])
+            #print(user['email'],user['password_hash'])
 
             if not user:
                 print("didn't match user")
@@ -83,12 +83,12 @@ def login():
                 return jsonify({"error": "Invalid credentials"}), 401
             
             # User authenticated successfully
-            session['user_id'] = user['id']
+            session['user_id'] = user['user_id']
             
             return jsonify({
                 "message": "Login successful",
-                "user_id": user['id'],
-                "display_name": user['display_name']
+                "user_id": user['user_id'],
+                "username": user['username']
             }), 200
     except Exception as e:
         logging.error(f"Error during login: {e}")
