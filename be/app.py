@@ -8,7 +8,7 @@ import uuid
 import logging
 import sys
 import sqlite3
-from .init_db import init_db
+from .init_db import init_db, update_db_schema
 from .login import login_bp
 
 ENV = os.environ.get('FLASK_ENV', 'development')
@@ -37,6 +37,7 @@ game_states = {}
 
 # Initialize the database on startup
 init_db()
+update_db_schema()
 
 app = Flask(__name__)
 # Improved CORS settings with explicit Replit domains

@@ -15,29 +15,36 @@ login_bp = Blueprint('login', __name__)
 def signup():
     data = request.get_json()
     email = data.get('email')
-    password = data.get('password')  # In production, this should be hashed
-    display_name = data.get('display_name', email.split('@')[0] if email else None)
+    username = data.get('username')
+    password = data.get('password')
 
-    if not email or not password:
-        return jsonify({"error": "Missing email or password"}), 400
+    if not email or not username or not password:
+        return jsonify({"error": "Missing email, username or password"}), 400
 
-    user_id = str(uuid.uuid4())  # Create a new user ID for registration
+    user_id = str(uuid.uuid4())
 
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            # Check if user already exists
-            cursor.execute('SELECT id FROM users WHERE email = ?', (email, ))
-            existing_user = cursor.fetchone()
+            # Check if email already exists
+            cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+            existing_email = cursor.fetchone()
 
-            if existing_user:
-                return jsonify({"error": "User already exists"}), 400
+            if existing_email:
+                return jsonify({"error": "Email already registered"}), 400
 
-            # Register the new user (insert into users table)
+            # Check if username already exists
+            cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+            existing_username = cursor.fetchone()
+
+            if existing_username:
+                return jsonify({"error": "Username already taken"}), 400
+
+            # Register the new user
             cursor.execute('''
-                INSERT INTO users (id, email, password_hash, display_name, auth_type)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (user_id, email, password, display_name, 'email'))
+                INSERT INTO users (user_id, email, username, password_hash, auth_type)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (user_id, email, username, password))
 
             conn.commit()
 
@@ -48,7 +55,6 @@ def signup():
     except Exception as e:
         logging.error(f"Error during user registration: {e}")
         return jsonify({"error": "Internal server error"}), 500
-
 
 @login_bp.route('/login', methods=['POST'])
 def login():
@@ -90,3 +96,25 @@ def login():
 def logout():
     session.pop('user_id', None)
     return jsonify({"message": "Logged out successfully"}), 200
+
+@login_bp.route('/check-username', methods=['POST'])
+def check_username():
+    data = request.get_json()
+    username = data.get('username')
+
+    if not username:
+        return jsonify({"error": "No username provided"}), 400
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+            user = cursor.fetchone()
+
+            if user:
+                return jsonify({"available": False})
+            else:
+                return jsonify({"available": True})
+    except Exception as e:
+        logging.error(f"Error checking username: {e}")
+        return jsonify({"error": "Server error"}), 500

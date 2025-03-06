@@ -12,6 +12,19 @@ def get_db_connection():
         yield conn
     finally:
         conn.close()
+        
+def update_db_schema():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Check if username column exists
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [info[1] for info in cursor.fetchall()]
+
+        # Add username column if it doesn't exist
+        if 'username' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN username TEXT UNIQUE")
+            conn.commit()
+            logging.info("Added username column to users table")
 
 
 def init_db():
@@ -21,10 +34,10 @@ def init_db():
         # Create users table
         cursor.execute('''
           CREATE TABLE IF NOT EXISTS users (
-              id TEXT PRIMARY KEY,
+              user_id TEXT PRIMARY KEY,
               email TEXT UNIQUE,
+              username TEXT UNIQUE, 
               password_hash TEXT,
-              display_name TEXT,
               auth_type TEXT,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               settings JSON
@@ -62,3 +75,4 @@ def init_db():
 
         conn.commit()
         logging.info("Database initialized successfully")
+
