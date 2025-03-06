@@ -59,9 +59,9 @@ def signup():
 @login_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    email = data.get('email')
+    email = data.get('username')
     password = data.get('password')
-
+    print(email, password)
     if not email or not password:
         return jsonify({"error": "Missing email or password"}), 400
 
@@ -69,14 +69,17 @@ def login():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             # Find user with matching email
-            cursor.execute('SELECT user_id, email, password_hash, display_name FROM users WHERE email = ?', (email, ))
+            cursor.execute('SELECT user_id, email, password_hash, username FROM users WHERE email = ?', (email, ))
             user = cursor.fetchone()
+            print(user['email'],user['password_hash'])
 
             if not user:
+                print("didn't match user")
                 return jsonify({"error": "User not found"}), 404
             
             # In production, you should use a proper password comparison function
             if user['password_hash'] != password:
+                print("didn't match password")
                 return jsonify({"error": "Invalid credentials"}), 401
             
             # User authenticated successfully
