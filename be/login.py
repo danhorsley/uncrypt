@@ -34,7 +34,7 @@ def signup():
                 return jsonify({"error": "Email already registered"}), 400
 
             # Check if username already exists
-            cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+            cursor.execute('SELECT user_id FROM users WHERE username = ?', (username,))
             existing_username = cursor.fetchone()
 
             if existing_username:
