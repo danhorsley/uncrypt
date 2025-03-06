@@ -43,7 +43,7 @@ def signup():
             # Register the new user
             cursor.execute('''
                 INSERT INTO users (user_id, email, username, password_hash, auth_type)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?)
             ''', (user_id, email, username, password))
 
             conn.commit()
