@@ -44,7 +44,7 @@ def signup():
             cursor.execute('''
                 INSERT INTO users (user_id, email, username, password_hash, auth_type)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (user_id, email, username, password))
+            ''', (user_id, email, username, password, "emailauth"))
 
             conn.commit()
 
@@ -69,7 +69,7 @@ def login():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             # Find user with matching email
-            cursor.execute('SELECT id, email, password_hash, display_name FROM users WHERE email = ?', (email, ))
+            cursor.execute('SELECT user_id, email, password_hash, display_name FROM users WHERE email = ?', (email, ))
             user = cursor.fetchone()
 
             if not user:
