@@ -62,7 +62,7 @@ def login():
     # Accept either 'email' or 'username' parameter for compatibility
     email = data.get('email') or data.get('username')
     password = data.get('password')
-    print("Login attempt:", data, email, password)
+    print("Login attempt:", data, email, "and password " ,password)
 
     if not email or not password:
         return jsonify({"error": "Missing email or password"}), 400
