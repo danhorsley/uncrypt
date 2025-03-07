@@ -177,3 +177,4 @@ def check_username():
     except Exception as e:
         logging.error(f"Error checking username: {e}")
         return jsonify({"error": "Server error"}), 500
+
