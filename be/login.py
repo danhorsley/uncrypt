@@ -112,44 +112,44 @@ def signup():
         logging.error(f"Error during user registration: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-        @login_bp.route('/login', methods=['POST'])
-        def login():
-            data = request.get_json()
-            email = data.get('email') or data.get('username')
-            password = data.get('password')
+@login_bp.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data.get('email') or data.get('username')
+    password = data.get('password')
 
-            # Your existing login verification code here
-            try:
-                with get_db_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT user_id, email, password_hash, username FROM users WHERE email = ?', (email,))
-                    user = cursor.fetchone()
+    # Your existing login verification code here
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT user_id, email, password_hash, username FROM users WHERE email = ?', (email,))
+            user = cursor.fetchone()
 
-                    if not user:
-                        return jsonify({"error": "User not found"}), 404
+            if not user:
+                return jsonify({"error": "User not found"}), 404
 
-                    if user['password_hash'] != password:  # In production, use proper password verification
-                        return jsonify({"error": "Invalid credentials"}), 401
+            if user['password_hash'] != password:  # In production, use proper password verification
+                return jsonify({"error": "Invalid credentials"}), 401
 
-                    # Generate token
-                    token = generate_token(user['user_id'], user['username'])
+            # Generate token
+            token = generate_token(user['user_id'], user['username'])
 
-                    # Set session as well (for backward compatibility)
-                    session['user_id'] = user['user_id']
-                    session['authenticated'] = True
-                    session.permanent = True
+            # Set session as well (for backward compatibility)
+            session['user_id'] = user['user_id']
+            session['authenticated'] = True
+            session.permanent = True
 
-                    # Return success with token
-                    return jsonify({
-                        "success": True,
-                        "token": token,
-                        "user_id": user['user_id'],
-                        "username": user['username'],
-                        "email": user['email']
-                    })
-            except Exception as e:
-                print("Error in login:", str(e))
-                return jsonify({"error": "Internal server error"}), 500
+            # Return success with token
+            return jsonify({
+                "success": True,
+                "token": token,
+                "user_id": user['user_id'],
+                "username": user['username'],
+                "email": user['email']
+            })
+    except Exception as e:
+        print("Error in login:", str(e))
+        return jsonify({"error": "Internal server error"}), 500
 
 @login_bp.route('/logout', methods=['POST'])
 def logout():

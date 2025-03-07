@@ -8,7 +8,7 @@ import uuid
 import logging
 import sys
 import sqlite3
-from .init_db import init_db, update_db_schema
+from .init_db import init_db, update_db_schema, get_db_connection
 from .login import login_bp
 from .login import validate_token
 
