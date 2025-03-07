@@ -79,13 +79,28 @@ def login():
                 return jsonify({"error": "User not found"}), 404
 
             print("User found:", user)
-            print("credentials matched : ", user['email'], user['password_hash'])
-
-            # The rest of your login logic
+            
+            # Verify password
+            if user['password_hash'] != password:
+                print("Password mismatch")
+                return jsonify({"error": "Invalid credentials"}), 401
+                
+            print("Credentials matched: ", user['email'], user['password_hash'])
+            
+            # Set user session
+            session['user_id'] = user['user_id']
+            session.permanent = True
+            
+            # Return success with user info
+            return jsonify({
+                "success": True,
+                "user_id": user['user_id'],
+                "username": user['username'],
+                "email": user['email']
+            })
     except Exception as e:
         print("Error in login:", str(e))
         return jsonify({"error": "Internal server error"}), 500
-    print("end of function")
 
 @login_bp.route('/logout', methods=['POST'])
 def logout():
