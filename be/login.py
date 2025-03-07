@@ -59,9 +59,10 @@ def signup():
 @login_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    email = data.get('username')
+    # Accept either 'email' or 'username' parameter for compatibility
+    email = data.get('email') or data.get('username')
     password = data.get('password')
-    print(email, password)
+    print("Login attempt:", data, email, password)
 
     if not email or not password:
         return jsonify({"error": "Missing email or password"}), 400
