@@ -363,24 +363,26 @@ def guess():
     return jsonify(response_data)
 
 
-@app.route('/hint', methods=['OPTIONS'])
-def options_hint():
-    # Handle preflight request for CORS
-    response = app.make_default_options_response()
-    headers = response.headers
-    headers['Access-Control-Allow-Origin'] = '*'
-    headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Game-Id'
-    headers['Access-Control-Allow-Credentials'] = 'true'
-    return response
+# @app.route('/hint', methods=['OPTIONS'])
+# def options_hint():
+#     print("options hint")
+#     # Handle preflight request for CORS
+#     response = app.make_default_options_response()
+#     headers = response.headers
+#     headers['Access-Control-Allow-Origin'] = '*'
+#     headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+#     headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Game-Id'
+#     headers['Access-Control-Allow-Credentials'] = 'true'
+#     return response
 
 @app.route('/hint', methods=['POST'])
 def hint():
+    print("hint triggered")
     try:
         # Extract game_id from the request body
         data = request.get_json() or {}
         game_id = data.get('game_id')
-
+        print("hint request:", data, game_id)
         # Also check headers for game_id
         if not game_id and request.headers.get('X-Game-Id'):
             game_id = request.headers.get('X-Game-Id')
