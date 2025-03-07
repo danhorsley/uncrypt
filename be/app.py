@@ -628,3 +628,92 @@ if __name__ == '__main__':
     logging.info(f"Debug mode: {debug_mode}")
     logging.info("Running on host: 0.0.0.0, port: 8000")
     app.run(debug=debug_mode, host='0.0.0.0', port=8000)
+
+
+@app.route('/record_score', methods=['POST'])
+def record_score():
+    """Record a completed game score to the database"""
+    try:
+        data = request.get_json()
+
+        # Get game_id from request or headers
+        game_id = data.get('game_id')
+        if not game_id and request.headers.get('X-Game-Id'):
+            game_id = request.headers.get('X-Game-Id')
+
+        # Get user_id from session or request
+        user_id = session.get('user_id')
+        if not user_id and data.get('user_id'):
+            user_id = data.get('user_id')
+
+        # If no user_id, create an anonymous user
+        if not user_id:
+            user_id = f"anon_{str(uuid.uuid4())[:8]}"
+
+        # Validate required fields
+        required_fields = ['score', 'mistakes', 'time_taken', 'difficulty']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        # Get game state to verify completion
+        game_state = None
+        if game_id and game_id in game_states:
+            game_state = game_states[game_id]
+
+        if not game_state:
+            game_state = session.get('game_state')
+
+        if not game_state:
+            return jsonify({"error": "Game not found or session expired"}), 404
+
+        # Check if game was actually completed 
+        # (all encrypted letters were correctly guessed)
+        encrypted_text = game_state.get('encrypted_paragraph', '')
+        unique_encrypted_letters = set(char for char in encrypted_text 
+                                       if char.isalpha())
+        correctly_guessed = set(game_state.get('correctly_guessed', []))
+
+        # Check if all letters were guessed and mistakes count matches
+        is_completed = unique_encrypted_letters.issubset(correctly_guessed)
+        verified_mistakes = game_state.get('mistakes', 0)
+
+        # If reported mistakes don't match actual mistakes, something's wrong
+        if verified_mistakes != data['mistakes']:
+            logging.warning(f"Mistake count mismatch: reported {data['mistakes']}, actual {verified_mistakes}")
+            # Use the server's count
+            data['mistakes'] = verified_mistakes
+
+        # Calculate clean run (no mistakes)
+        is_clean_run = data['mistakes'] == 0
+
+        # Record the score in the database
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO game_scores (
+                    user_id, score, mistakes, time_taken, 
+                    difficulty, is_clean_run, completed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                user_id,
+                data['score'], 
+                data['mistakes'],
+                data['time_taken'],
+                data['difficulty'],
+                is_clean_run,
+                is_completed
+            ))
+            conn.commit()
+            score_id = cursor.lastrowid
+
+        # Return success with the score ID
+        return jsonify({
+            "success": True,
+            "score_id": score_id,
+            "verified": is_completed
+        })
+
+    except Exception as e:
+        logging.error(f"Error recording score: {e}")
+        return jsonify({"error": "Failed to record score"}), 500

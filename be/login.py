@@ -61,7 +61,8 @@ def login():
     data = request.get_json()
     email = data.get('username')
     password = data.get('password')
-    #print(email, password)
+    print(email, password)
+
     if not email or not password:
         return jsonify({"error": "Missing email or password"}), 400
 
@@ -71,29 +72,20 @@ def login():
             # Find user with matching email
             cursor.execute('SELECT user_id, email, password_hash, username FROM users WHERE email = ?', (email, ))
             user = cursor.fetchone()
-            #print(user['email'],user['password_hash'])
 
+            # Add this check
             if not user:
-                print("didn't match user")
+                print("User not found for email:", email)
                 return jsonify({"error": "User not found"}), 404
-            
-            # In production, you should use a proper password comparison function
-            if user['password_hash'] != password:
-                print("didn't match password")
-                return jsonify({"error": "Invalid credentials"}), 401
-            
-            # User authenticated successfully
-            session['user_id'] = user['user_id']
-            
-            return jsonify({
-                "message": "Login successful",
-                "user_id": user['user_id'],
-                "username": user['username']
-            }), 200
-    except Exception as e:
-        logging.error(f"Error during login: {e}")
-        return jsonify({"error": "Internal server error"}), 500
 
+            print("User found:", user)
+            print("credentials matched : ", user['email'], user['password_hash'])
+
+            # The rest of your login logic
+    except Exception as e:
+        print("Error in login:", str(e))
+        return jsonify({"error": "Internal server error"}), 500
+    print("end of function")
 
 @login_bp.route('/logout', methods=['POST'])
 def logout():

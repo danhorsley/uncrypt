@@ -60,18 +60,20 @@ def init_db():
 
         # Create game_scores table
         cursor.execute('''
-          CREATE TABLE IF NOT EXISTS game_scores (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_id TEXT,
-              date_played TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-              time_taken INTEGER,
-              mistakes INTEGER,
-              score INTEGER,
-              difficulty TEXT,
-              is_clean_run BOOLEAN,
-              FOREIGN KEY (user_id) REFERENCES users (id)
-          )
-      ''')
+            CREATE TABLE IF NOT EXISTS game_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT,
+                date_played TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                time_taken INTEGER,     -- time in seconds
+                mistakes INTEGER,
+                score INTEGER,
+                difficulty TEXT,        -- 'easy', 'normal', 'hard'
+                is_clean_run BOOLEAN,   -- no mistakes
+                completed BOOLEAN,      -- game was actually completed
+                game_id TEXT,           -- optional reference to the game
+                FOREIGN KEY (user_id) REFERENCES users (user_id)
+            )
+        ''')
 
         conn.commit()
         logging.info("Database initialized successfully")
