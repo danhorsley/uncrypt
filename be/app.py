@@ -630,89 +630,96 @@ if __name__ == '__main__':
     app.run(debug=debug_mode, host='0.0.0.0', port=8000)
 
 
+
 @app.route('/record_score', methods=['POST'])
 def record_score():
-    """Record a completed game score to the database"""
+    """
+    Record a user's score for a completed game
+    Requires authentication - user_id should be in session
+    """
+    # Check if user is authenticated
+    user_id = session.get('user_id')
+    print("user_id", user_id)
+    if not user_id:
+        return jsonify({"error": "Authentication required"}), 401
+
+    # Get data from request
+    data = request.get_json()
+    logging.info(f"Received score data: {data}")
+    # Extract required fields with defaults
+    game_id = data.get('game_id')
+    score = data.get('score', 0)
+    mistakes = data.get('mistakes', 0)
+    time_taken = data.get('time_taken', 0)  # in seconds
+    difficulty = data.get('difficulty', 'normal')
+
+    # Validate the data
+    if score < 0 or mistakes < 0 or time_taken < 0:
+        return jsonify({"error": "Invalid score data"}), 400
+
     try:
-        data = request.get_json()
-
-        # Get game_id from request or headers
-        game_id = data.get('game_id')
-        if not game_id and request.headers.get('X-Game-Id'):
-            game_id = request.headers.get('X-Game-Id')
-
-        # Get user_id from session or request
-        user_id = session.get('user_id')
-        if not user_id and data.get('user_id'):
-            user_id = data.get('user_id')
-
-        # If no user_id, create an anonymous user
-        if not user_id:
-            user_id = f"anon_{str(uuid.uuid4())[:8]}"
-
-        # Validate required fields
-        required_fields = ['score', 'mistakes', 'time_taken', 'difficulty']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"Missing required field: {field}"}), 400
-
-        # Get game state to verify completion
-        game_state = None
-        if game_id and game_id in game_states:
-            game_state = game_states[game_id]
-
-        if not game_state:
-            game_state = session.get('game_state')
-
-        if not game_state:
-            return jsonify({"error": "Game not found or session expired"}), 404
-
-        # Check if game was actually completed 
-        # (all encrypted letters were correctly guessed)
-        encrypted_text = game_state.get('encrypted_paragraph', '')
-        unique_encrypted_letters = set(char for char in encrypted_text 
-                                       if char.isalpha())
-        correctly_guessed = set(game_state.get('correctly_guessed', []))
-
-        # Check if all letters were guessed and mistakes count matches
-        is_completed = unique_encrypted_letters.issubset(correctly_guessed)
-        verified_mistakes = game_state.get('mistakes', 0)
-
-        # If reported mistakes don't match actual mistakes, something's wrong
-        if verified_mistakes != data['mistakes']:
-            logging.warning(f"Mistake count mismatch: reported {data['mistakes']}, actual {verified_mistakes}")
-            # Use the server's count
-            data['mistakes'] = verified_mistakes
-
-        # Calculate clean run (no mistakes)
-        is_clean_run = data['mistakes'] == 0
-
-        # Record the score in the database
         with get_db_connection() as conn:
             cursor = conn.cursor()
+
+            # Insert the score record
             cursor.execute('''
-                INSERT INTO game_scores (
-                    user_id, score, mistakes, time_taken, 
-                    difficulty, is_clean_run, completed
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO game_scores 
+                (user_id, score, mistakes, time_taken, difficulty, is_clean_run, date_played) 
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ''', (
-                user_id,
-                data['score'], 
-                data['mistakes'],
-                data['time_taken'],
-                data['difficulty'],
-                is_clean_run,
-                is_completed
+                user_id, 
+                score, 
+                mistakes, 
+                time_taken, 
+                difficulty, 
+                mistakes == 0  # is_clean_run is True if no mistakes
             ))
-            conn.commit()
+
+            # Get the ID of the inserted record
             score_id = cursor.lastrowid
 
-        # Return success with the score ID
-        return jsonify({
-            "success": True,
-            "score_id": score_id,
-            "verified": is_completed
-        })
+            # If there's a game_id, associate it with the score
+            if game_id:
+                cursor.execute('''
+                    UPDATE game_scores 
+                    SET game_id = ? 
+                    WHERE id = ?
+                ''', (game_id, score_id))
+
+            # Update user stats
+            cursor.execute('''
+                SELECT * FROM user_stats WHERE user_id = ?
+            ''', (user_id,))
+
+            user_stats = cursor.fetchone()
+
+            if user_stats:
+                # Update existing stats
+                cursor.execute('''
+                    UPDATE user_stats 
+                    SET 
+                        total_games_played = total_games_played + 1,
+                        cumulative_score = cumulative_score + ?,
+                        last_played_date = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                ''', (score, user_id))
+            else:
+                # Create new stats record
+                cursor.execute('''
+                    INSERT INTO user_stats 
+                    (user_id, total_games_played, cumulative_score, last_played_date) 
+                    VALUES (?, 1, ?, CURRENT_TIMESTAMP)
+                ''', (user_id, score))
+
+            conn.commit()
+
+            logging.info(f"Score recorded successfully for user {user_id}: {score}")
+
+            return jsonify({
+                "success": True,
+                "score_id": score_id,
+                "message": "Score recorded successfully"
+            }), 200
 
     except Exception as e:
         logging.error(f"Error recording score: {e}")

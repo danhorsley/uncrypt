@@ -90,6 +90,7 @@ def login():
             
             # Set user session
             session['user_id'] = user['user_id']
+            session['authenticated'] = True
             session.permanent = True
             
             # Return success with user info
