@@ -10,6 +10,7 @@ import sys
 import sqlite3
 from .init_db import init_db, update_db_schema
 from .login import login_bp
+from .login import validate_token
 
 ENV = os.environ.get('FLASK_ENV', 'development')
 # Database path - using different files for dev and prod
@@ -64,7 +65,7 @@ CORS(
             ]
         }
     },
-    allow_headers=["Content-Type", "X-Requested-With", "Accept", "X-Game-Id"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "X-Game-Id"],
     expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"])
 
 app.secret_key = 'your-secret-key'
@@ -80,6 +81,7 @@ app.config[
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 # Register the login blueprint
 app.register_blueprint(login_bp)
+TOKEN_SECRET = "your-secret-key-change-this-in-production"
 
 
 class QuoteLoader:
@@ -619,34 +621,66 @@ def save_quote():
         })
 
     return jsonify({'message': 'Quote saved successfully'}), 200
-
-
-if __name__ == '__main__':
-    logging.info("Starting application server")
-    # In production, debug should be False
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    logging.info(f"Debug mode: {debug_mode}")
-    logging.info("Running on host: 0.0.0.0, port: 8000")
-    app.run(debug=debug_mode, host='0.0.0.0', port=8000)
-
-
-
+    
 @app.route('/record_score', methods=['POST'])
 def record_score():
     """
     Record a user's score for a completed game
-    Requires authentication - user_id should be in session
+    Supports both session and token-based authentication
     """
-    # Check if user is authenticated
-    user_id = session.get('user_id')
-    print("user_id", user_id)
+    # Try multiple authentication methods
+    user_id = None
+    auth_error = None
+
+    # 1. Check session authentication
     if not user_id:
-        return jsonify({"error": "Authentication required"}), 401
+        session_user_id = session.get('user_id')
+        if session_user_id:
+            user_id = session_user_id
+        else:
+            auth_error = "Session not found"
+
+    # 2. Check token authentication (in Authorization header)
+    if not user_id:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header[7:]  # Remove 'Bearer ' prefix
+            try:
+                user_id = validate_token(token)
+            except ValueError as e:
+                auth_error = str(e)
+
+    # 3. Check token in request body
+    if not user_id:
+        data = request.get_json()
+        token = data.get('token')
+        if token:
+            try:
+                user_id = validate_token(token)
+            except ValueError as e:
+                auth_error = str(e)
+
+    # 4. Check explicit user_id in request (least secure, but for testing)
+    if not user_id:
+        data = request.get_json()
+        explicit_user_id = data.get('user_id')
+        if explicit_user_id:
+            # In production, you might want to verify this user exists
+            user_id = explicit_user_id
+            logging.warning(f"Using explicit user_id from request: {user_id}")
+
+    # Log what we found
+    logging.info(f"Authentication result: user_id={user_id}, error={auth_error}")
+
+    # If no user_id was found through any method, return authentication error
+    if not user_id:
+        return jsonify({
+            "error": "Authentication required", 
+            "details": auth_error or "No valid authentication provided"
+        }), 401
 
     # Get data from request
     data = request.get_json()
-    logging.info(f"Received score data: {data}")
-    # Extract required fields with defaults
     game_id = data.get('game_id')
     score = data.get('score', 0)
     mistakes = data.get('mistakes', 0)
@@ -724,3 +758,14 @@ def record_score():
     except Exception as e:
         logging.error(f"Error recording score: {e}")
         return jsonify({"error": "Failed to record score"}), 500
+
+if __name__ == '__main__':
+    logging.info("Starting application server")
+    # In production, debug should be False
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    logging.info(f"Debug mode: {debug_mode}")
+    logging.info("Running on host: 0.0.0.0, port: 8000")
+    app.run(debug=debug_mode, host='0.0.0.0', port=8000)
+
+
+
