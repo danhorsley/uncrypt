@@ -11,6 +11,8 @@ import sqlite3
 from .init_db import init_db, get_db_connection
 from .login import login_bp
 from .login import validate_token
+from .stats import stats_bp
+from .scoring import scoring_bp
 
 
 ENV = os.environ.get('FLASK_ENV', 'development')
@@ -78,6 +80,9 @@ app.config['SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin reques
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 # Register the login blueprint
 app.register_blueprint(login_bp)
+app.register_blueprint(stats_bp)
+app.register_blueprint(scoring_bp)
+
 TOKEN_SECRET = "your-secret-key-change-this-in-production"
 
 
@@ -518,21 +523,6 @@ def get_user_scores(user_id, limit=10):
         return [dict(row) for row in cursor.fetchall()]
 
 
-def get_leaderboard(limit=10):
-    """Get the top scores across all users"""
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            '''
-            SELECT g.*, u.username 
-            FROM game_scores g
-            JOIN users u ON g.user_id = u.id
-            WHERE g.completed = 1
-            ORDER BY g.score DESC, g.mistakes ASC
-            LIMIT ?
-        ''', (limit, ))
-        return [dict(row) for row in cursor.fetchall()]
-
 
 def validate_guess(encrypted_letter, guessed_letter, reverse_mapping,
                    correctly_guessed, mistakes):
@@ -581,7 +571,7 @@ def handle_options(path):
 
     return response
 
-@app.route('/get_attribution', methods=['OPTIONS'])
+# @app.route('/get_attribution', methods=['OPTIONS'])
 # def options_get_attribution():
 #     print("get_att triggered")
 #     # Handle preflight request for CORS
@@ -684,132 +674,6 @@ def save_quote():
 
     return jsonify({'message': 'Quote saved successfully'}), 200
     
-@app.route('/record_score', methods=['POST'])
-def record_score():
-    print("recordscore triggered")
-
-    # Get data from request
-    data = request.get_json()
-    game_id = data.get('game_id')
-
-    # Try to get user from session first
-    user_id = session.get('user_id')
-
-    # If not in session, check for token in Authorization header
-    if not user_id:
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split(' ')[1]
-            try:
-                # Use the validate_token function from login.py
-                user_id = validate_token(token)
-                print(f"Authenticated via token: user_id={user_id}")
-            except Exception as e:
-                print(f"Token validation failed: {e}")
-
-    print("user_id", user_id)
-
-    if not user_id:
-        return jsonify({"error": "Authentication required", "code": "auth_required"}), 401
-
-    # Get data from request
-    data = request.get_json()
-    game_id = data.get('game_id')
-
-    # Validate required fields
-    if not game_id:
-        return jsonify({"error": "Missing game_id"}), 400
-
-    # Extract game data
-    game_type = data.get('game_type', 'regular')
-    challenge_date = data.get('challenge_date')
-    score = data.get('score', 0)
-    mistakes = data.get('mistakes', 0)
-    time_taken = data.get('time_taken', 0)
-    difficulty = data.get('difficulty', 'normal')
-
-    # Log request for debugging
-    logging.info(f"Record score request: user={user_id}, game={game_id}, type={game_type}, score={score}")
-
-    try:
-        # Check for existing score based on game type
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
-            # For daily challenges, check by date
-            if game_type == 'daily' and challenge_date:
-                cursor.execute('''
-                    SELECT id FROM game_scores 
-                    WHERE user_id = ? AND game_type = 'daily' AND challenge_date = ?
-                ''', (user_id, challenge_date))
-            else:
-                # For regular or speedrun games, check by game_id
-                cursor.execute('''
-                    SELECT id FROM game_scores 
-                    WHERE user_id = ? AND game_id = ?
-                ''', (user_id, game_id))
-
-            existing_score = cursor.fetchone()
-
-            if existing_score:
-                return jsonify({
-                    "success": True,
-                    "message": f"Score was already recorded for this {game_type} game",
-                    "score_id": existing_score['id'],
-                    "duplicate": True
-                }), 200
-
-            # No existing score, insert new one
-            cursor.execute('''
-                INSERT INTO game_scores (
-                    user_id, game_id, score, mistakes, time_taken, 
-                    difficulty, game_type, challenge_date
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                user_id, game_id, score, mistakes, time_taken,
-                difficulty, game_type, challenge_date
-            ))
-            conn.commit()
-            score_id = cursor.lastrowid
-
-            # Also update user_stats (if needed)
-            # This could be expanded to handle different stats for different game types
-            cursor.execute('''
-                UPDATE user_stats 
-                SET total_games_played = total_games_played + 1,
-                    cumulative_score = cumulative_score + ?,
-                    last_played_date = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-            ''', (score, user_id))
-
-            # If no rows updated, create new user_stats
-            if cursor.rowcount == 0:
-                cursor.execute('''
-                    INSERT INTO user_stats (
-                        user_id, total_games_played, cumulative_score, 
-                        last_played_date
-                    )
-                    VALUES (?, 1, ?, CURRENT_TIMESTAMP)
-                ''', (user_id, score))
-
-            conn.commit()
-
-        # Log success
-        logging.info(f"Score recorded with ID {score_id} for user {user_id}, game={game_id}, type={game_type}")
-
-        return jsonify({
-            "success": True,
-            "message": f"{game_type.capitalize()} score recorded successfully",
-            "score_id": score_id
-        }), 201
-
-    except Exception as e:
-        logging.error(f"Error recording score: {e}")
-        return jsonify({
-            "success": False,
-            "error": "Failed to record score due to server error"
-        }), 500
 
 if __name__ == '__main__':
     logging.info("Starting application server")

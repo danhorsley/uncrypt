@@ -50,11 +50,13 @@ def init_db():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_stats (
                 user_id TEXT,
-                current_streak INTEGER DEFAULT 0,
-                max_streak INTEGER DEFAULT 0,
+                current_streak INTEGER DEFAULT 0,         -- Original streak (games completed)
+                max_streak INTEGER DEFAULT 0,             -- Max of original streak
+                current_noloss_streak INTEGER DEFAULT 0,  -- Streak without any losses
+                max_noloss_streak INTEGER DEFAULT 0,      -- Max of no-loss streak
                 total_games_played INTEGER DEFAULT 0,
                 cumulative_score INTEGER DEFAULT 0,
-                highest_monthly_score INTEGER DEFAULT 0,
+                highest_weekly_score INTEGER DEFAULT 0,   -- Changed from monthly to weekly
                 last_played_date TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (user_id)
             )
