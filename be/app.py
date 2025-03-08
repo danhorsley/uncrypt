@@ -61,7 +61,7 @@ CORS(
             ]
         }
     },
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "X-Game-Id"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "X-Game-Id", "X-User-ID", "X-Session-ID"],
     expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"],
     allow_credentials=True  # Make sure this is True
 )
@@ -574,7 +574,8 @@ def handle_options(path):
     # Configure CORS headers for the preflight response
     headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
     headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Game-Id, Accept'
+    # Add X-User-ID to the allowed headers list here too
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Game-Id, X-User-ID, X-Session-ID, Accept'
     headers['Access-Control-Allow-Credentials'] = 'true'
     headers['Access-Control-Max-Age'] = '3600'  # Cache preflight response for 1 hour
 
