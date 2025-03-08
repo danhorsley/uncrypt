@@ -10,6 +10,7 @@ import sys
 import sqlite3
 from .init_db import init_db, get_db_connection
 from .login import login_bp
+from .login import validate_token
 
 
 ENV = os.environ.get('FLASK_ENV', 'development')
@@ -43,7 +44,7 @@ app = Flask(__name__)
 # Improved CORS settings with explicit Replit domains
 CORS(
     app,
-    supports_credentials=True,
+    supports_credentials=True,  # This is important for cookies
     resources={
         r"/*": {
             "origins": [
@@ -56,12 +57,14 @@ CORS(
                 "https://firewalledreplit.com",
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
-                "*"
+                "*"  # Allow all origins (you can restrict this for production)
             ]
         }
     },
     allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "X-Game-Id"],
-    expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"])
+    expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"],
+    allow_credentials=True  # Make sure this is True
+)
 
 app.secret_key = 'your-secret-key'
 # Make sure session is permanent
@@ -70,8 +73,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow any domain
-app.config[
-    'SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
+app.config['SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
 #app.config['SESSION_COOKIE_SECURE'] = True  # Set to True if using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 # Register the login blueprint
@@ -562,18 +564,34 @@ def provide_hint(game_state):
         print(r1, r2, r3)
         return r1, r2, r3
     return None, game_state['mistakes']
+# Add this function to handle OPTIONS requests for any endpoint
 
-
-@app.route('/get_attribution', methods=['OPTIONS'])
-def options_get_attribution():
-    # Handle preflight request for CORS
+@app.route('/<path:path>', methods=['OPTIONS'])
+def handle_options(path):
     response = app.make_default_options_response()
     headers = response.headers
-    headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-    headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-    headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Game-Id'
+
+    # Configure CORS headers for the preflight response
+    headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+    headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Game-Id, Accept'
     headers['Access-Control-Allow-Credentials'] = 'true'
+    headers['Access-Control-Max-Age'] = '3600'  # Cache preflight response for 1 hour
+
     return response
+
+@app.route('/get_attribution', methods=['OPTIONS'])
+# def options_get_attribution():
+#     print("get_att triggered")
+#     # Handle preflight request for CORS
+#     response = app.make_default_options_response()
+#     headers = response.headers
+#     headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+#     headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+#     headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Game-Id'
+#     headers['Access-Control-Allow-Credentials'] = 'true'
+#     print
+#     return response
 
 
 @app.route('/get_attribution', methods=['GET'])
@@ -667,10 +685,29 @@ def save_quote():
     
 @app.route('/record_score', methods=['POST'])
 def record_score():
-    # Get authenticated user
     print("recordscore triggered")
+
+    # Get data from request
+    data = request.get_json()
+    game_id = data.get('game_id')
+
+    # Try to get user from session first
     user_id = session.get('user_id')
+
+    # If not in session, check for token in Authorization header
+    if not user_id:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                # Use the validate_token function from login.py
+                user_id = validate_token(token)
+                print(f"Authenticated via token: user_id={user_id}")
+            except Exception as e:
+                print(f"Token validation failed: {e}")
+
     print("user_id", user_id)
+
     if not user_id:
         return jsonify({"error": "Authentication required", "code": "auth_required"}), 401
 

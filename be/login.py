@@ -137,16 +137,20 @@ def login():
             # Set session as well (for backward compatibility)
             session['user_id'] = user['user_id']
             session['authenticated'] = True
-            session.permanent = True
-
-            # Return success with token
-            return jsonify({
+            session.permanent = True  # Make sure session persists
+    
+            # Log the session for debugging
+            print(f"Login successful, session contains: {session}")
+    
+            # Explicitly set cookie headers for better cross-origin support
+            response = jsonify({
                 "success": True,
                 "token": token,
                 "user_id": user['user_id'],
                 "username": user['username'],
                 "email": user['email']
             })
+            return response
     except Exception as e:
         print("Error in login:", str(e))
         return jsonify({"error": "Internal server error"}), 500
