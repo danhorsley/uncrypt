@@ -164,26 +164,45 @@ def get_leaderboard():
                 time_filter_params = [start_of_week.isoformat()]
 
             # Base query for leaderboard
-            leaderboard_query = '''
-                SELECT 
-                    u.username, 
-                    u.user_id,
-                    SUM(g.score) as total_score,
-                    COUNT(g.id) as games_played,
-                    AVG(g.score) as avg_score
-                FROM game_scores g
-                JOIN users u ON g.user_id = u.user_id
-                WHERE g.completed = 1
-            '''
-
-            if time_filter:
-                leaderboard_query += " " + time_filter
-
-            leaderboard_query += '''
-                GROUP BY g.user_id
-                ORDER BY total_score DESC
-                LIMIT ? OFFSET ?
-            '''
+            if period == 'weekly':
+                # If weekly, we need to calculate from game_scores
+                leaderboard_query = '''
+                    SELECT 
+                        u.username, 
+                        u.user_id,
+                        SUM(g.score) as total_score,
+                        COUNT(g.id) as games_played,
+                        AVG(g.score) as avg_score
+                    FROM game_scores g
+                    JOIN users u ON g.user_id = u.user_id
+                    WHERE g.completed = 1
+                '''
+                
+                if time_filter:
+                    leaderboard_query += " " + time_filter
+                
+                leaderboard_query += '''
+                    GROUP BY g.user_id
+                    ORDER BY total_score DESC
+                    LIMIT ? OFFSET ?
+                '''
+            else:
+                # For all-time, use the user_stats table which has precomputed values
+                leaderboard_query = '''
+                    SELECT 
+                        u.username, 
+                        u.user_id,
+                        s.cumulative_score as total_score,
+                        s.total_games_played as games_played,
+                        CASE 
+                            WHEN s.total_games_played > 0 THEN s.cumulative_score / s.total_games_played 
+                            ELSE 0 
+                        END as avg_score
+                    FROM user_stats s
+                    JOIN users u ON s.user_id = u.user_id
+                    ORDER BY total_score DESC
+                    LIMIT ? OFFSET ?
+                '''
 
             # Execute query for leaderboard entries
             params = time_filter_params + [per_page, offset]
@@ -202,41 +221,58 @@ def get_leaderboard():
                 })
 
             # Get total number of entries for pagination info
-            count_query = '''
-                SELECT COUNT(DISTINCT g.user_id) 
-                FROM game_scores g
-                JOIN users u ON g.user_id = u.user_id
-                WHERE g.completed = 1
-            '''
-
-            if time_filter:
-                count_query += " " + time_filter
-
-            cursor.execute(count_query, time_filter_params)
+            if period == 'weekly':
+                count_query = '''
+                    SELECT COUNT(DISTINCT g.user_id) 
+                    FROM game_scores g
+                    JOIN users u ON g.user_id = u.user_id
+                    WHERE g.completed = 1
+                '''
+                
+                if time_filter:
+                    count_query += " " + time_filter
+                    
+                cursor.execute(count_query, time_filter_params)
+            else:
+                # For all-time, count from user_stats
+                count_query = 'SELECT COUNT(*) FROM user_stats'
+                cursor.execute(count_query)
             total_users = cursor.fetchone()[0]
 
             # If authenticated, get current user's rank even if not in results
             user_rank = None
             if user_id:
-                rank_query = '''
-                    WITH RankedUsers AS (
-                        SELECT 
-                            user_id, 
-                            RANK() OVER (ORDER BY SUM(score) DESC) as user_rank
-                        FROM game_scores
-                        WHERE completed = 1
-                '''
-
-                if time_filter:
-                    # Remove the 'g.' prefix since we're not using an alias in this query
-                    modified_time_filter = time_filter.replace('g.', '')
-                    rank_query += " " + modified_time_filter
-
-                rank_query += '''
-                        GROUP BY user_id
-                    )
-                    SELECT user_rank FROM RankedUsers WHERE user_id = ?
-                '''
+                if period == 'weekly':
+                    rank_query = '''
+                        WITH RankedUsers AS (
+                            SELECT 
+                                user_id, 
+                                RANK() OVER (ORDER BY SUM(score) DESC) as user_rank
+                            FROM game_scores
+                            WHERE completed = 1
+                    '''
+                    
+                    if time_filter:
+                        # Remove the 'g.' prefix since we're not using an alias in this query
+                        modified_time_filter = time_filter.replace('g.', '')
+                        rank_query += " " + modified_time_filter
+                    
+                    rank_query += '''
+                            GROUP BY user_id
+                        )
+                        SELECT user_rank FROM RankedUsers WHERE user_id = ?
+                    '''
+                else:
+                    # For all-time, rank using user_stats
+                    rank_query = '''
+                        WITH RankedUsers AS (
+                            SELECT 
+                                user_id, 
+                                RANK() OVER (ORDER BY cumulative_score DESC) as user_rank
+                            FROM user_stats
+                        )
+                        SELECT user_rank FROM RankedUsers WHERE user_id = ?
+                    '''
 
                 try:
                     # Try the query with window functions first
@@ -249,28 +285,38 @@ def get_leaderboard():
                     logging.warning(f"Window function not supported, using fallback method: {e}")
 
                     # Fallback method for SQLite that doesn't support window functions
-                    fallback_query = '''
-                        SELECT COUNT(*) + 1 FROM (
-                            SELECT user_id, SUM(score) as total_score
-                            FROM game_scores
-                            WHERE completed = 1
-                    '''
-
-                    if time_filter:
-                        fallback_query += " " + time_filter.replace('g.', '')
-
-                    fallback_query += '''
-                            GROUP BY user_id
-                        ) scores
-                        WHERE total_score > (
-                            SELECT SUM(score) FROM game_scores 
-                            WHERE user_id = ? AND completed = 1
-                    '''
-
-                    if time_filter:
-                        fallback_query += " " + time_filter.replace('g.', '')
-
-                    fallback_query += ")"
+                    if period == 'weekly':
+                        fallback_query = '''
+                            SELECT COUNT(*) + 1 FROM (
+                                SELECT user_id, SUM(score) as total_score
+                                FROM game_scores
+                                WHERE completed = 1
+                        '''
+                        
+                        if time_filter:
+                            fallback_query += " " + time_filter.replace('g.', '')
+                        
+                        fallback_query += '''
+                                GROUP BY user_id
+                            ) scores
+                            WHERE total_score > (
+                                SELECT SUM(score) FROM game_scores 
+                                WHERE user_id = ? AND completed = 1
+                        '''
+                        
+                        if time_filter:
+                            fallback_query += " " + time_filter.replace('g.', '')
+                        
+                        fallback_query += ")"
+                    else:
+                        # Fallback for all-time using user_stats
+                        fallback_query = '''
+                            SELECT COUNT(*) + 1 FROM user_stats
+                            WHERE cumulative_score > (
+                                SELECT cumulative_score FROM user_stats
+                                WHERE user_id = ?
+                            )
+                        '''
 
                     cursor.execute(fallback_query, time_filter_params + [user_id] + time_filter_params)
                     user_rank = cursor.fetchone()[0]
