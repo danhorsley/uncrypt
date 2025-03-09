@@ -38,10 +38,10 @@ def get_user_stats():
                 WHERE user_id = ?
             ''', (user_id,))
 
-            stats = cursor.fetchone()
+            stats_row = cursor.fetchone()
 
             # If no stats exist yet, initialize with defaults
-            if not stats:
+            if not stats_row:
                 return jsonify({
                     "user_id": user_id,
                     "current_streak": 0,
@@ -55,8 +55,12 @@ def get_user_stats():
                     "weekly_stats": {
                         "score": 0,
                         "games_played": 0
-                    }
+                    },
+                    "top_scores": []
                 })
+
+            # Convert the row to a dictionary
+            stats_dict = dict(stats_row)
 
             # Calculate weekly stats on-the-fly
             # Get the start of the current week (Monday)
@@ -64,23 +68,23 @@ def get_user_stats():
             start_of_week = today - datetime.timedelta(days=today.weekday())
 
             cursor.execute('''
-                SELECT SUM(score) as weekly_score
+                SELECT SUM(score) as weekly_score, COUNT(*) as games_count
                 FROM game_scores
                 WHERE user_id = ? 
                 AND date(created_at) >= date(?)
             ''', (user_id, start_of_week))
 
             weekly_data = cursor.fetchone()
-            weekly_score = weekly_data['weekly_score'] if weekly_data and weekly_data['weekly_score'] is not None else 0
 
-            # Update highest_weekly_score if current weekly score is higher
-            if stats:
-                stats_dict = dict(stats)
-                highest_weekly_score = stats_dict.get('highest_weekly_score', 0)
-                if weekly_score > highest_weekly_score:
-                    highest_weekly_score = weekly_score
-            else:
-                highest_weekly_score = weekly_score
+            weekly_score = weekly_data['weekly_score'] if weekly_data and weekly_data['weekly_score'] is not None else 0
+            weekly_games = weekly_data['games_count'] if weekly_data and weekly_data['games_count'] is not None else 0
+
+            # Prepare weekly stats
+            weekly_stats = {
+                "score": weekly_score,
+                "games_played": weekly_games
+            }
+
             # Get top 5 scores for personal stats
             cursor.execute('''
                 SELECT score, difficulty, time_taken, created_at 
@@ -102,15 +106,15 @@ def get_user_stats():
             # Prepare the response
             response = {
                 "user_id": user_id,
-                "current_streak": stats['current_streak'],
-                "max_streak": stats['max_streak'],
-                "current_noloss_streak": stats.get('current_noloss_streak', 0),
-                "max_noloss_streak": stats.get('max_noloss_streak', 0),
-                "total_games_played": stats['total_games_played'],
-                "cumulative_score": stats['cumulative_score'],
-                "highest_weekly_score": stats.get('highest_weekly_score', 
-                                              stats.get('highest_monthly_score', 0)),
-                "last_played_date": stats['last_played_date'],
+                "current_streak": stats_dict.get('current_streak', 0),
+                "max_streak": stats_dict.get('max_streak', 0),
+                "current_noloss_streak": stats_dict.get('current_noloss_streak', 0),
+                "max_noloss_streak": stats_dict.get('max_noloss_streak', 0),
+                "total_games_played": stats_dict.get('total_games_played', 0),
+                "cumulative_score": stats_dict.get('cumulative_score', 0),
+                "highest_weekly_score": stats_dict.get('highest_weekly_score', 
+                                              stats_dict.get('highest_monthly_score', 0)),
+                "last_played_date": stats_dict.get('last_played_date'),
                 "weekly_stats": weekly_stats,
                 "top_scores": top_scores
             }
@@ -177,10 +181,10 @@ def get_leaderboard():
                     JOIN users u ON g.user_id = u.user_id
                     WHERE g.completed = 1
                 '''
-                
+
                 if time_filter:
                     leaderboard_query += " " + time_filter
-                
+
                 leaderboard_query += '''
                     GROUP BY g.user_id
                     ORDER BY total_score DESC
@@ -228,10 +232,10 @@ def get_leaderboard():
                     JOIN users u ON g.user_id = u.user_id
                     WHERE g.completed = 1
                 '''
-                
+
                 if time_filter:
                     count_query += " " + time_filter
-                    
+
                 cursor.execute(count_query, time_filter_params)
             else:
                 # For all-time, count from user_stats
@@ -251,12 +255,12 @@ def get_leaderboard():
                             FROM game_scores
                             WHERE completed = 1
                     '''
-                    
+
                     if time_filter:
                         # Remove the 'g.' prefix since we're not using an alias in this query
                         modified_time_filter = time_filter.replace('g.', '')
                         rank_query += " " + modified_time_filter
-                    
+
                     rank_query += '''
                             GROUP BY user_id
                         )
@@ -292,10 +296,10 @@ def get_leaderboard():
                                 FROM game_scores
                                 WHERE completed = 1
                         '''
-                        
+
                         if time_filter:
                             fallback_query += " " + time_filter.replace('g.', '')
-                        
+
                         fallback_query += '''
                                 GROUP BY user_id
                             ) scores
@@ -303,10 +307,10 @@ def get_leaderboard():
                                 SELECT SUM(score) FROM game_scores 
                                 WHERE user_id = ? AND completed = 1
                         '''
-                        
+
                         if time_filter:
                             fallback_query += " " + time_filter.replace('g.', '')
-                        
+
                         fallback_query += ")"
                     else:
                         # Fallback for all-time using user_stats
