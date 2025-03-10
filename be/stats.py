@@ -129,8 +129,19 @@ def get_user_stats():
 def get_leaderboard():
     # Extract parameters with defaults
     period = request.args.get('period', 'all-time')
-    page = int(request.args.get('page', 1))
-    per_page = min(int(request.args.get('per_page', 10)), 50)  # Limit to 50 max
+
+    # Handle non-integer page values safely
+    try:
+        page = int(request.args.get('page', 1))
+    except (ValueError, TypeError):
+        # If page isn't a valid number, default to page 1
+        page = 1
+
+    try:
+        per_page = min(int(request.args.get('per_page', 10)), 50)  # Limit to 50 max
+    except (ValueError, TypeError):
+        # If per_page isn't a valid number, default to 10
+        per_page = 10
 
     # Calculate pagination offset
     offset = (page - 1) * per_page
@@ -328,9 +339,21 @@ def get_leaderboard():
 def get_streak_leaderboard():
     # Extract parameters with defaults
     streak_type = request.args.get('type', 'win')  # 'win' or 'noloss'
-    period = request.args.get('period', 'current') # 'current' or 'best'
-    page = int(request.args.get('page', 1))
-    per_page = min(int(request.args.get('per_page', 10)), 50)  # Limit to 50 max
+    period = request.args.get('period', 'current')  # 'current' or 'best'
+
+    # Handle non-integer page values safely
+    try:
+        page = int(request.args.get('page', 1))
+    except (ValueError, TypeError):
+        # If page isn't a valid number, default to page 1
+        page = 1
+
+    try:
+        per_page = min(int(request.args.get('per_page', 10)), 50)  # Limit to 50 max
+    except (ValueError, TypeError):
+        # If per_page isn't a valid number, default to 10
+        per_page = 10
+
 
     # Calculate pagination offset
     offset = (page - 1) * per_page
