@@ -335,28 +335,34 @@ def get_leaderboard():
         logging.error(f"Error fetching leaderboard: {e}")
         return jsonify({"error": "Failed to retrieve leaderboard data"}), 500
 
+        # Update this part in stats.py to fix potential streak leaderboard issues
+
 @stats_bp.route('/streak_leaderboard', methods=['GET'])
 def get_streak_leaderboard():
+    # Add debugging
+    logging.info(f"Streak leaderboard request received with params: {request.args}")
+
     # Extract parameters with defaults
     streak_type = request.args.get('type', 'win')  # 'win' or 'noloss'
     period = request.args.get('period', 'current')  # 'current' or 'best'
 
-    # Handle non-integer page values safely
+    # Better handling of pagination parameters
     try:
         page = int(request.args.get('page', 1))
     except (ValueError, TypeError):
-        # If page isn't a valid number, default to page 1
+        logging.warning(f"Invalid page parameter: {request.args.get('page')}, defaulting to 1")
         page = 1
 
     try:
         per_page = min(int(request.args.get('per_page', 10)), 50)  # Limit to 50 max
     except (ValueError, TypeError):
-        # If per_page isn't a valid number, default to 10
+        logging.warning(f"Invalid per_page parameter: {request.args.get('per_page')}, defaulting to 10")
         per_page = 10
-
 
     # Calculate pagination offset
     offset = (page - 1) * per_page
+
+    logging.info(f"Processing streak request with: type={streak_type}, period={period}, page={page}, per_page={per_page}")
 
     try:
         with get_db_connection() as conn:
@@ -370,13 +376,17 @@ def get_streak_leaderboard():
                 token = auth_header.split(' ')[1]
                 try:
                     user_id = validate_token(token)
-                except ValueError:
+                    logging.info(f"User authenticated via token: {user_id}")
+                except ValueError as e:
                     # Continue anyway, just won't have user-specific data
+                    logging.warning(f"Token validation failed: {e}")
                     pass
 
             # If no token, try session
             if not user_id:
                 user_id = session.get('user_id')
+                if user_id:
+                    logging.info(f"User authenticated via session: {user_id}")
 
             # Determine which streak field to use based on parameters
             streak_field = ""
@@ -384,6 +394,8 @@ def get_streak_leaderboard():
                 streak_field = "current_streak" if period == 'current' else "max_streak"
             else:  # 'noloss'
                 streak_field = "current_noloss_streak" if period == 'current' else "max_noloss_streak"
+
+            logging.info(f"Using streak field: {streak_field}")
 
             # Base query for top streak entries
             streak_query = f'''
@@ -402,7 +414,7 @@ def get_streak_leaderboard():
             '''
 
             # Execute query for top streak entries
-            cursor.execute(streak_query, [user_id, per_page, offset])
+            cursor.execute(streak_query, [user_id or "", per_page, offset])
             top_entries = []
             for row in cursor.fetchall():
                 entry = {
@@ -418,6 +430,8 @@ def get_streak_leaderboard():
                     entry["last_active"] = row['last_played_date']
 
                 top_entries.append(entry)
+
+            logging.info(f"Found {len(top_entries)} streak entries")
 
             # Get current user entry if authenticated and not in top entries
             current_user_entry = None
@@ -452,6 +466,10 @@ def get_streak_leaderboard():
                     if period == 'current':
                         current_user_entry["last_active"] = user_row['last_played_date']
 
+                    logging.info(f"Added current user entry with rank {user_row['rank']}")
+                else:
+                    logging.info(f"User {user_id} has no streak data")
+
             # Get total number of users with streaks > 0
             count_query = f'''
                 SELECT COUNT(*) as total_users
@@ -460,6 +478,8 @@ def get_streak_leaderboard():
             '''
             cursor.execute(count_query)
             total_users = cursor.fetchone()['total_users']
+
+            logging.info(f"Total users with {streak_field} > 0: {total_users}")
 
             # Prepare pagination info
             pagination = {
@@ -470,14 +490,17 @@ def get_streak_leaderboard():
             }
 
             # Return results in the new format
-            return jsonify({
+            result = {
                 "entries": top_entries,  # Keep original name for streak endpoints
                 "currentUserEntry": current_user_entry,
                 "pagination": pagination,
                 "streak_type": streak_type,
                 "period": period
-            })
+            }
+
+            logging.info(f"Returning streak data with {len(top_entries)} entries")
+            return jsonify(result)
 
     except Exception as e:
         logging.error(f"Error fetching streak leaderboard: {e}")
-        return jsonify({"error": "Failed to retrieve streak leaderboard data"}), 500
+        return jsonify({"error": f"Failed to retrieve streak leaderboard data: {str(e)}"}), 500
