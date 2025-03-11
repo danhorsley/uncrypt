@@ -2,12 +2,14 @@ from flask import Blueprint, request, jsonify
 import logging
 import time, hmac, hashlib, json, base64
 from .init_db import get_db_connection
+import os
 
 # Create a separate blueprint for token validation
 token_bp = Blueprint('token', __name__)
 
 # Your TOKEN_SECRET should be defined here or imported
-TOKEN_SECRET = "your-secret-key-change-this-in-production"
+TOKEN_SECRET = TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
+
 
 def validate_token_helper(token):
     """Helper function to validate a token and return user_id if valid"""
@@ -16,11 +18,9 @@ def validate_token_helper(token):
         payload_b64, signature = token.split('.')
 
         # Verify signature
-        expected_signature = hmac.new(
-            TOKEN_SECRET.encode('utf-8'),
-            payload_b64.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
+        expected_signature = hmac.new(TOKEN_SECRET.encode('utf-8'),
+                                      payload_b64.encode('utf-8'),
+                                      hashlib.sha256).hexdigest()
 
         if not hmac.compare_digest(signature, expected_signature):
             logging.warning("Invalid token signature received")
@@ -51,6 +51,7 @@ def validate_token_helper(token):
         logging.error(f"Token validation failed: {str(e)}")
         raise ValueError(f"Token validation failed: {str(e)}")
 
+
 @token_bp.route('/validate-token', methods=['GET'])
 def validate_token_endpoint():
     """Endpoint to validate the authentication token"""
@@ -58,7 +59,10 @@ def validate_token_endpoint():
     auth_header = request.headers.get('Authorization')
 
     if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({"valid": False, "error": "Missing or invalid authorization header"}), 401
+        return jsonify({
+            "valid": False,
+            "error": "Missing or invalid authorization header"
+        }), 401
 
     # Extract the token from the header
     token = auth_header.split(' ')[1]
@@ -73,11 +77,16 @@ def validate_token_endpoint():
         # Get user information if needed
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT user_id, username, email FROM users WHERE user_id = ?', (user_id,))
+            cursor.execute(
+                'SELECT user_id, username, email FROM users WHERE user_id = ?',
+                (user_id, ))
             user = cursor.fetchone()
 
             if not user:
-                return jsonify({"valid": False, "error": "User not found"}), 401
+                return jsonify({
+                    "valid": False,
+                    "error": "User not found"
+                }), 401
 
             # Return user info along with validation status
             return jsonify({

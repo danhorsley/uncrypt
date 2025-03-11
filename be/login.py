@@ -9,11 +9,13 @@ import hmac
 import hashlib
 import json
 import base64
+import os
 
 # Create a blueprint for the login routes
 login_bp = Blueprint('login', __name__)
 
-TOKEN_SECRET = "your-secret-key-change-this-in-production"
+TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
+
 
 def generate_token(user_id, username, expiry=3600):
     """Generate a simple authentication token"""
@@ -29,15 +31,14 @@ def generate_token(user_id, username, expiry=3600):
     payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode('utf-8')
 
     # Create signature
-    signature = hmac.new(
-        TOKEN_SECRET.encode('utf-8'),
-        payload_b64.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
+    signature = hmac.new(TOKEN_SECRET.encode('utf-8'),
+                         payload_b64.encode('utf-8'),
+                         hashlib.sha256).hexdigest()
 
     # Combine into token
     token = f"{payload_b64}.{signature}"
     return token
+
 
 def validate_token(token):
     """Validate token and return user_id if valid"""
@@ -46,11 +47,9 @@ def validate_token(token):
         payload_b64, signature = token.split('.')
 
         # Verify signature
-        expected_signature = hmac.new(
-            TOKEN_SECRET.encode('utf-8'),
-            payload_b64.encode('utf-8'),
-            hashlib.sha256
-        ).hexdigest()
+        expected_signature = hmac.new(TOKEN_SECRET.encode('utf-8'),
+                                      payload_b64.encode('utf-8'),
+                                      hashlib.sha256).hexdigest()
 
         if not hmac.compare_digest(signature, expected_signature):
             raise ValueError("Invalid token signature")
@@ -66,6 +65,7 @@ def validate_token(token):
         return payload.get('user_id')
     except Exception as e:
         raise ValueError(f"Token validation failed: {str(e)}")
+
 
 @login_bp.route('/signup', methods=['POST'])
 def signup():
@@ -83,21 +83,24 @@ def signup():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             # Check if email already exists
-            cursor.execute('SELECT user_id FROM users WHERE email = ?', (email,))
+            cursor.execute('SELECT user_id FROM users WHERE email = ?',
+                           (email, ))
             existing_email = cursor.fetchone()
 
             if existing_email:
                 return jsonify({"error": "Email already registered"}), 400
 
             # Check if username already exists
-            cursor.execute('SELECT user_id FROM users WHERE username = ?', (username,))
+            cursor.execute('SELECT user_id FROM users WHERE username = ?',
+                           (username, ))
             existing_username = cursor.fetchone()
 
             if existing_username:
                 return jsonify({"error": "Username already taken"}), 400
 
             # Register the new user
-            cursor.execute('''
+            cursor.execute(
+                '''
                 INSERT INTO users (user_id, email, username, password_hash, auth_type)
                 VALUES (?, ?, ?, ?, ?)
             ''', (user_id, email, username, password, "emailauth"))
@@ -112,6 +115,7 @@ def signup():
         logging.error(f"Error during user registration: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+
 @login_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -122,7 +126,9 @@ def login():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT user_id, email, password_hash, username FROM users WHERE email = ?', (email,))
+            cursor.execute(
+                'SELECT user_id, email, password_hash, username FROM users WHERE email = ?',
+                (email, ))
             user = cursor.fetchone()
 
             if not user:
@@ -138,10 +144,10 @@ def login():
             session['user_id'] = user['user_id']
             session['authenticated'] = True
             session.permanent = True  # Make sure session persists
-    
+
             # Log the session for debugging
             print(f"Login successful, session contains: {session}")
-    
+
             # Explicitly set cookie headers for better cross-origin support
             response = jsonify({
                 "success": True,
@@ -155,10 +161,12 @@ def login():
         print("Error in login:", str(e))
         return jsonify({"error": "Internal server error"}), 500
 
+
 @login_bp.route('/logout', methods=['POST'])
 def logout():
     session.pop('user_id', None)
     return jsonify({"message": "Logged out successfully"}), 200
+
 
 @login_bp.route('/check-username', methods=['POST'])
 def check_username():
@@ -171,7 +179,8 @@ def check_username():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT user_id FROM users WHERE username = ?', (username,))
+            cursor.execute('SELECT user_id FROM users WHERE username = ?',
+                           (username, ))
             user = cursor.fetchone()
 
             if user:
@@ -181,4 +190,3 @@ def check_username():
     except Exception as e:
         logging.error(f"Error checking username: {e}")
         return jsonify({"error": "Server error"}), 500
-

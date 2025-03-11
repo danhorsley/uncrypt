@@ -14,13 +14,14 @@ from .login import validate_token
 from .stats import stats_bp
 from .scoring import scoring_bp
 
-
 ENV = os.environ.get('FLASK_ENV', 'development')
 # Database path - using different files for dev and prod
 if ENV == 'production':
-    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'game.db')  # Production database
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                 'game.db')  # Production database
 else:
-    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dev_game.db')  # Development database
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                 'dev_game.db')  # Development database
 
 # Import configuration
 try:
@@ -63,19 +64,23 @@ CORS(
             ]
         }
     },
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "Accept", "X-Game-Id", "X-User-ID", "X-Session-ID"],
+    allow_headers=[
+        "Authorization", "Content-Type", "X-Requested-With", "Accept",
+        "X-Game-Id", "X-User-ID", "X-Session-ID"
+    ],
     expose_headers=["Access-Control-Allow-Origin", "X-Game-Id"],
     allow_credentials=True  # Make sure this is True
 )
 
-app.secret_key = 'your-secret-key'
+app.secret_key = TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
 # Make sure session is permanent
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour in seconds
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow any domain
-app.config['SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
+app.config[
+    'SESSION_COOKIE_SAMESITE'] = None  # Required for cross-origin requests
 #app.config['SESSION_COOKIE_SECURE'] = True  # Set to True if using HTTPS
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 # Register the login blueprint
@@ -382,6 +387,7 @@ def guess():
 #     headers['Access-Control-Allow-Credentials'] = 'true'
 #     return response
 
+
 @app.route('/hint', methods=['POST'])
 def hint():
     print("hint triggered")
@@ -407,7 +413,8 @@ def hint():
 
         # If still no game state, start a new game
         if not game_state:
-            encrypted, encrypted_frequency, unique_original_letters = start_game()
+            encrypted, encrypted_frequency, unique_original_letters = start_game(
+            )
 
             # Generate a new game_id
             new_game_id = str(uuid.uuid4())
@@ -441,11 +448,9 @@ def hint():
             game_state['mistakes'] += 1
 
             # Get the updated display
-            display = get_display(
-                game_state['encrypted_paragraph'],
-                game_state['correctly_guessed'],
-                game_state['reverse_mapping']
-            )
+            display = get_display(game_state['encrypted_paragraph'],
+                                  game_state['correctly_guessed'],
+                                  game_state['reverse_mapping'])
 
             # Save state in both session and game_states
             session['game_state'] = game_state
@@ -461,13 +466,14 @@ def hint():
         else:
             # All letters are already mapped
             return jsonify({
-                'display': get_display(
-                    game_state['encrypted_paragraph'],
-                    game_state['correctly_guessed'],
-                    game_state['reverse_mapping']
-                ),
-                'mistakes': game_state['mistakes'],
-                'correctly_guessed': game_state['correctly_guessed']
+                'display':
+                get_display(game_state['encrypted_paragraph'],
+                            game_state['correctly_guessed'],
+                            game_state['reverse_mapping']),
+                'mistakes':
+                game_state['mistakes'],
+                'correctly_guessed':
+                game_state['correctly_guessed']
             })
     except Exception as e:
         # Log the error for debugging
@@ -480,6 +486,7 @@ def hint():
             'mistakes': 0,
             'correctly_guessed': []
         }), 500
+
 
 # User and score tracking functions
 def register_user(username):
@@ -523,7 +530,6 @@ def get_user_scores(user_id, limit=10):
         return [dict(row) for row in cursor.fetchall()]
 
 
-
 def validate_guess(encrypted_letter, guessed_letter, reverse_mapping,
                    correctly_guessed, mistakes):
     if reverse_mapping[encrypted_letter] == guessed_letter:
@@ -554,7 +560,10 @@ def provide_hint(game_state):
         print(r1, r2, r3)
         return r1, r2, r3
     return None, game_state['mistakes']
+
+
 # Add this function to handle OPTIONS requests for any endpoint
+
 
 @app.route('/<path:path>', methods=['OPTIONS'])
 def handle_options(path):
@@ -565,11 +574,14 @@ def handle_options(path):
     headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
     headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     # Add X-User-ID to the allowed headers list here too
-    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Game-Id, X-User-ID, X-Session-ID, Accept'
+    headers[
+        'Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Game-Id, X-User-ID, X-Session-ID, Accept'
     headers['Access-Control-Allow-Credentials'] = 'true'
-    headers['Access-Control-Max-Age'] = '3600'  # Cache preflight response for 1 hour
+    headers[
+        'Access-Control-Max-Age'] = '3600'  # Cache preflight response for 1 hour
 
     return response
+
 
 # @app.route('/get_attribution', methods=['OPTIONS'])
 # def options_get_attribution():
@@ -673,7 +685,7 @@ def save_quote():
         })
 
     return jsonify({'message': 'Quote saved successfully'}), 200
-    
+
 
 if __name__ == '__main__':
     logging.info("Starting application server")
@@ -682,6 +694,3 @@ if __name__ == '__main__':
     logging.info(f"Debug mode: {debug_mode}")
     logging.info("Running on host: 0.0.0.0, port: 8000")
     app.run(debug=debug_mode, host='0.0.0.0', port=8000)
-
-
-
