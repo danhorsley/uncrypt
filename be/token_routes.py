@@ -8,7 +8,7 @@ import os
 token_bp = Blueprint('token', __name__)
 
 # Your TOKEN_SECRET should be defined here or imported
-TOKEN_SECRET = TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
+TOKEN_SECRET = os.environ.get("TOKEN_SECRET")
 
 
 def validate_token_helper(token):
