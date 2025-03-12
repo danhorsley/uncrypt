@@ -10,7 +10,7 @@ import hashlib
 import json
 import base64
 import os
-
+from werkzeug.security import generate_password_hash, check_password_hash
 # Create a blueprint for the login routes
 login_bp = Blueprint('login', __name__)
 
@@ -99,11 +99,12 @@ def signup():
                 return jsonify({"error": "Username already taken"}), 400
 
             # Register the new user
+            hashed_password = generate_password_hash(password)
             cursor.execute(
                 '''
                 INSERT INTO users (user_id, email, username, password_hash, auth_type)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (user_id, email, username, password, "emailauth"))
+            ''', (user_id, email, username, hashed_password, "emailauth"))
 
             conn.commit()
 
@@ -134,7 +135,7 @@ def login():
             if not user:
                 return jsonify({"error": "User not found"}), 404
 
-            if user['password_hash'] != password:  # In production, use proper password verification
+            if not check_password_hash(user['password_hash'], password):
                 return jsonify({"error": "Invalid credentials"}), 401
 
             # Generate token
