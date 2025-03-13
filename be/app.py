@@ -13,6 +13,12 @@ from .login import login_bp
 from .login import validate_token
 from .stats import stats_bp
 from .scoring import scoring_bp
+from .game_state import (get_active_game_state, save_game_state,
+                         delete_game_state, sync_game_state_with_session,
+                         init_game_state_cache)
+import threading
+import time
+from .token_routes import token_bp
 
 ENV = os.environ.get('FLASK_ENV', 'development')
 # Database path - using different files for dev and prod
@@ -42,6 +48,33 @@ game_states = {}
 
 # Initialize the database on startup
 init_db()
+init_game_state_cache()
+
+
+# Set up periodic cleanup task
+def periodic_cleanup():
+    """
+    Run cleanup tasks periodically 
+    """
+    while True:
+        try:
+            # Run cleanup every hour
+            time.sleep(3600)  # 1 hour
+            logging.info("Running periodic cleanup tasks")
+
+            # Cleanup old game states
+            deleted_count = cleanup_old_game_states()
+            logging.info(f"Cleaned up {deleted_count} old game states")
+
+        except Exception as e:
+            logging.error(f"Error in periodic cleanup: {e}")
+            # Sleep a bit even if there was an error
+            time.sleep(60)
+
+
+# Start the cleanup thread
+cleanup_thread = threading.Thread(target=periodic_cleanup, daemon=True)
+cleanup_thread.start()
 
 app = Flask(__name__)
 # Improved CORS settings with explicit Replit domains
@@ -87,6 +120,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.register_blueprint(login_bp)
 app.register_blueprint(stats_bp)
 app.register_blueprint(scoring_bp)
+app.register_blueprint(token_bp)
 
 TOKEN_SECRET = "your-secret-key-change-this-in-production"
 
@@ -216,8 +250,87 @@ def start():
     # Make session permanent
     session.permanent = True
 
-    # Clear any existing session data to ensure a fresh start
-    session.clear()
+    # Try to get user_id from session or token
+    user_id = session.get('user_id')
+
+    # If no user_id in session, check for token in Authorization header
+    if not user_id:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                user_id = validate_token(token)
+                print(f"Authenticated via token: user_id={user_id}")
+            except Exception as e:
+                print(f"Token validation failed: {e}")
+
+    # Check for an existing game state if we have a user_id
+    existing_game_state = None
+    if user_id:
+        print(f"Checking for existing game state for user {user_id}")
+        existing_game_state = get_active_game_state(user_id)
+
+        # If there's an existing game state, use it
+        if existing_game_state:
+            print(
+                f"Found existing game state with ID {existing_game_state['game_id']}"
+            )
+
+            # Set the game state in the session
+            session['game_state'] = existing_game_state
+
+            # Generate response from the existing state
+            encrypted = existing_game_state['encrypted_paragraph']
+
+            # Get unique letters in the original text
+            unique_original_letters = sorted(
+                set(c
+                    for c in existing_game_state['original_paragraph'].upper()
+                    if c.isalpha()))
+
+            # Calculate letter frequency for the encrypted text
+            encrypted_frequency = {}
+            for c in encrypted:
+                if c.isalpha():
+                    encrypted_frequency[c] = encrypted_frequency.get(c, 0) + 1
+
+            # Add 0 frequency for unused letters
+            full_frequency = {
+                chr(65 + i): encrypted_frequency.get(chr(65 + i), 0)
+                for i in range(26)
+            }
+
+            # Generate display text
+            display = get_display(encrypted,
+                                  existing_game_state['correctly_guessed'],
+                                  existing_game_state['reverse_mapping'])
+
+            # Return the existing game state
+            return jsonify({
+                'encrypted_paragraph':
+                encrypted,
+                'mistakes':
+                existing_game_state['mistakes'],
+                'letter_frequency':
+                full_frequency,
+                'display':
+                display,
+                'original_letters':
+                unique_original_letters,
+                'major_attribution':
+                existing_game_state['major_attribution'],
+                'minor_attribution':
+                existing_game_state['minor_attribution'],
+                'game_id':
+                existing_game_state['game_id'],
+                'is_restored':
+                True  # Flag to indicate this is a restored game
+            })
+
+    # If we reach here, we need to start a new game
+    # Clear any existing session data for a fresh start
+    if 'game_state' in session:
+        session.pop('game_state')
 
     # Start a new game with shorter quotes (80 chars should fit on most mobile screens in landscape)
     encrypted, encrypted_frequency, unique_original_letters = start_game(
@@ -227,8 +340,19 @@ def start():
     import uuid
     game_id = str(uuid.uuid4())
 
+    # Get the game state from the session
+    game_state = session.get('game_state')
+
+    # Update with game_id
+    game_state['game_id'] = game_id
+
     # Store the game state in the in-memory dictionary
-    game_states[game_id] = session.get('game_state')
+    game_states[game_id] = game_state
+
+    # NEW: If user is authenticated, save the game state to the database
+    if user_id:
+        save_game_state(user_id, game_id, game_state)
+        print(f"Saved new game state for user {user_id}, game {game_id}")
 
     display = get_display(encrypted, [], {})
     # Extend frequency with 0 for unused letters
@@ -312,6 +436,18 @@ def guess():
         game_id = request.headers.get('X-Game-Id')
         logging.debug(f"Game ID from headers: {game_id}")
 
+    # Get user_id from session or token
+    user_id = session.get('user_id')
+    if not user_id:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                user_id = validate_token(token)
+                logging.debug(f"Authenticated via token: user_id={user_id}")
+            except Exception as e:
+                logging.debug(f"Token validation failed: {e}")
+
     # First try to get game state from the game_states dictionary
     game_state = None
     if game_id and game_id in game_states:
@@ -332,7 +468,13 @@ def guess():
 
         # Generate a new game_id
         new_game_id = str(uuid.uuid4())
-        game_states[new_game_id] = session.get('game_state')
+        game_state = session.get('game_state')
+        game_state['game_id'] = new_game_id
+        game_states[new_game_id] = game_state
+
+        # If user is authenticated, save the new game state
+        if user_id:
+            save_game_state(user_id, new_game_id, game_state)
 
         return jsonify({
             'display': get_display(encrypted, [], {}),
@@ -342,7 +484,7 @@ def guess():
             'game_id': new_game_id  # Send the new game_id to the client
         })
 
-    # Rest of function remains unchanged
+    # Process the guess
     encrypted_letter = data['encrypted_letter']
     guessed_letter = data['guessed_letter']
 
@@ -364,6 +506,12 @@ def guess():
     session['game_state'] = game_state
     if game_id:
         game_states[game_id] = game_state
+
+        # NEW: If user is authenticated, update the game state in the database
+        if user_id:
+            sync_game_state_with_session(game_id, user_id)
+            logging.debug(
+                f"Synced game state to DB for user {user_id}, game {game_id}")
 
     response_data = {
         'display': display,
@@ -396,9 +544,22 @@ def hint():
         data = request.get_json() or {}
         game_id = data.get('game_id')
         print("hint request:", data, game_id)
+
         # Also check headers for game_id
         if not game_id and request.headers.get('X-Game-Id'):
             game_id = request.headers.get('X-Game-Id')
+
+        # Get user_id from session or token
+        user_id = session.get('user_id')
+        if not user_id:
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+                try:
+                    user_id = validate_token(token)
+                    print(f"Authenticated via token: user_id={user_id}")
+                except Exception as e:
+                    print(f"Token validation failed: {e}")
 
         # Initialize game_state as None
         game_state = None
@@ -418,7 +579,13 @@ def hint():
 
             # Generate a new game_id
             new_game_id = str(uuid.uuid4())
-            game_states[new_game_id] = session.get('game_state')
+            game_state = session.get('game_state')
+            game_state['game_id'] = new_game_id
+            game_states[new_game_id] = game_state
+
+            # If user is authenticated, save the new game state
+            if user_id:
+                save_game_state(user_id, new_game_id, game_state)
 
             # Return the new game with session expired error
             return jsonify({
@@ -456,6 +623,13 @@ def hint():
             session['game_state'] = game_state
             if game_id:
                 game_states[game_id] = game_state
+
+                # NEW: If user is authenticated, update the game state in the database
+                if user_id:
+                    sync_game_state_with_session(game_id, user_id)
+                    print(
+                        f"Synced game state to DB after hint for user {user_id}, game {game_id}"
+                    )
 
             # Return the results
             return jsonify({
@@ -583,18 +757,33 @@ def handle_options(path):
     return response
 
 
-# @app.route('/get_attribution', methods=['OPTIONS'])
-# def options_get_attribution():
-#     print("get_att triggered")
-#     # Handle preflight request for CORS
-#     response = app.make_default_options_response()
-#     headers = response.headers
-#     headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
-#     headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-#     headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Game-Id'
-#     headers['Access-Control-Allow-Credentials'] = 'true'
-#     print
-#     return response
+@app.route('/completed', methods=['POST'])
+def mark_game_completed():
+    data = request.get_json()
+    game_id = data.get('game_id')
+
+    if not game_id:
+        return jsonify({"error": "Missing game_id"}), 400
+
+    # Get user_id from session or token
+    user_id = session.get('user_id')
+
+    if not user_id:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                user_id = validate_token(token)
+            except Exception as e:
+                print(f"Token validation failed: {e}")
+
+    # Delete the game state since it's completed
+    if user_id:
+        delete_game_state(user_id=user_id)
+    else:
+        delete_game_state(game_id=game_id)
+
+    return jsonify({"success": True, "message": "Game marked as completed"})
 
 
 @app.route('/get_attribution', methods=['GET'])
@@ -685,6 +874,192 @@ def save_quote():
         })
 
     return jsonify({'message': 'Quote saved successfully'}), 200
+
+
+@app.route('/check_active_game', methods=['GET'])
+def check_active_game():
+    """
+    Check if the current user has an active game
+    Returns game_id if one exists, or null if none
+    """
+    # Get user_id from session or token
+    user_id = session.get('user_id')
+
+    # If not in session, check for token in Authorization header
+    if not user_id:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                user_id = validate_token(token)
+            except Exception as e:
+                print(f"Token validation failed: {e}")
+
+    # If we don't have a user_id, can't check for active games
+    if not user_id:
+        return jsonify({
+            "authenticated": False,
+            "message": "Authentication required to check for active games",
+            "has_active_game": False
+        }), 401
+
+    # Check for an active game
+    active_game = get_active_game_state(user_id)
+
+    if active_game:
+        # Return minimal information about the active game
+        return jsonify({
+            "authenticated":
+            True,
+            "has_active_game":
+            True,
+            "game_id":
+            active_game['game_id'],
+            "last_updated":
+            active_game.get('last_updated'),
+            "encrypted_length":
+            len(active_game['encrypted_paragraph']),
+            "mistakes":
+            active_game['mistakes'],
+            "progress_percentage":
+            round((len(active_game['correctly_guessed']) / len(
+                set(c for c in active_game['encrypted_paragraph']
+                    if c.isalpha()))) *
+                  100) if active_game['correctly_guessed'] else 0
+        })
+    else:
+        # No active game
+        return jsonify({"authenticated": True, "has_active_game": False})
+
+
+@app.route('/debug/game_states', methods=['GET'])
+def debug_game_states():
+    """
+    Debug endpoint to view all active game states in the database
+    """
+    # Only allow in development mode
+    if ENV != 'development':
+        return jsonify(
+            {"error":
+             "Debug endpoints only available in development mode"}), 403
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM active_game_states')
+            rows = cursor.fetchall()
+
+            # Convert rows to dictionaries
+            game_states_list = []
+            for row in rows:
+                game_state_dict = dict(row)
+
+                # Parse JSON fields
+                try:
+                    game_state_dict['mapping'] = json.loads(
+                        game_state_dict['mapping'])
+                    game_state_dict['correctly_guessed'] = json.loads(
+                        game_state_dict['correctly_guessed'])
+                    if 'reverse_mapping' in game_state_dict and game_state_dict[
+                            'reverse_mapping']:
+                        game_state_dict['reverse_mapping'] = json.loads(
+                            game_state_dict['reverse_mapping'])
+                except Exception as e:
+                    logging.error(f"Error parsing JSON fields: {e}")
+
+                game_states_list.append(game_state_dict)
+
+            return jsonify({
+                "count": len(game_states_list),
+                "game_states": game_states_list
+            })
+
+    except Exception as e:
+        logging.error(f"Error in debug endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/debug/save_game_state', methods=['POST'])
+def debug_save_game_state():
+    """
+    Debug endpoint to manually save the current session game state to the database
+    """
+    # Only allow in development mode
+    if ENV != 'development':
+        return jsonify(
+            {"error":
+             "Debug endpoints only available in development mode"}), 403
+
+    # Get user_id and game_id
+    user_id = session.get('user_id')
+    game_state = session.get('game_state')
+
+    if not user_id:
+        return jsonify({"error": "No user_id in session"}), 400
+
+    if not game_state:
+        return jsonify({"error": "No game_state in session"}), 400
+
+    game_id = game_state.get('game_id')
+    if not game_id:
+        # Generate a game_id if none exists
+        game_id = str(uuid.uuid4())
+        game_state['game_id'] = game_id
+
+    # Try to save to database
+    success = save_game_state(user_id, game_id, game_state)
+
+    if success:
+        return jsonify({
+            "success":
+            True,
+            "message":
+            f"Game state saved for user {user_id}, game {game_id}"
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": "Failed to save game state"
+        }), 500
+
+
+@app.route('/debug/load_game_state', methods=['GET'])
+def debug_load_game_state():
+    """
+    Debug endpoint to manually load a game state from the database into the session
+    """
+    # Only allow in development mode
+    if ENV != 'development':
+        return jsonify(
+            {"error":
+             "Debug endpoints only available in development mode"}), 403
+
+    # Get user_id
+    user_id = session.get('user_id')
+
+    if not user_id:
+        return jsonify({"error": "No user_id in session"}), 400
+
+    # Try to load from database
+    success = load_game_state_to_session(user_id)
+
+    if success:
+        game_state = session.get('game_state')
+        return jsonify({
+            "success": True,
+            "message": f"Game state loaded for user {user_id}",
+            "game_id": game_state.get('game_id'),
+            "game_state": {
+                "encrypted_paragraph": game_state.get('encrypted_paragraph'),
+                "correctly_guessed": game_state.get('correctly_guessed'),
+                "mistakes": game_state.get('mistakes')
+            }
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": "No active game found for user"
+        }), 404
 
 
 if __name__ == '__main__':

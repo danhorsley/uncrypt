@@ -6,18 +6,18 @@ from contextlib import contextmanager
 # Database path - using different files for dev and prod
 ENV = os.environ.get('FLASK_ENV', 'development')
 if ENV == 'production':
-    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'game.db')  # Production database
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                 'game.db')  # Production database
 else:
-    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dev_game.db')  # Development database
+    DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                 'dev_game.db')  # Development database
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+    handlers=[logging.StreamHandler()])
+
 
 @contextmanager
 def get_db_connection():
@@ -27,6 +27,7 @@ def get_db_connection():
         yield conn
     finally:
         conn.close()
+
 
 def init_db():
     logging.info(f"Initializing SQLite database at {DATABASE_PATH}")
@@ -117,8 +118,32 @@ def init_db():
             )
         ''')
 
+        #create active game db
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS active_game_states (
+                user_id TEXT PRIMARY KEY,  
+                game_id TEXT UNIQUE,
+                original_paragraph TEXT,
+                encrypted_paragraph TEXT,
+                mapping TEXT,              
+                reverse_mapping TEXT,      -- Add reverse_mapping field
+                correctly_guessed TEXT,    
+                mistakes INTEGER DEFAULT 0,
+                major_attribution TEXT,
+                minor_attribution TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Add index for game_id
+        cursor.execute('''
+            CREATE INDEX IF NOT EXISTS idx_active_games_game_id 
+            ON active_game_states (game_id)
+        ''')
         conn.commit()
         logging.info("Database initialized successfully")
+
 
 # Run initialization if script is executed directly
 if __name__ == "__main__":

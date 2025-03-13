@@ -11,6 +11,7 @@ import json
 import base64
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+from .game_state import get_active_game_state
 # Create a blueprint for the login routes
 login_bp = Blueprint('login', __name__)
 
@@ -45,6 +46,11 @@ def validate_token(token):
     try:
         # Split token into payload and signature
         payload_b64, signature = token.split('.')
+
+        # Add padding if needed (this is the key fix)
+        missing_padding = len(payload_b64) % 4
+        if missing_padding:
+            payload_b64 += '=' * (4 - missing_padding)
 
         # Verify signature
         expected_signature = hmac.new(TOKEN_SECRET.encode('utf-8'),
@@ -107,7 +113,22 @@ def signup():
             ''', (user_id, email, username, hashed_password, "emailauth"))
 
             conn.commit()
+        if user_id:
+            # Check if this user has an active game
+            active_game = get_active_game_state(user_id)
 
+            # Add active game info to the response
+            response_data = {
+                "valid": True,
+                "user_id": user['user_id'],
+                "username": user['username'],
+                "email": user['email'],
+                "has_active_game": active_game is not None
+            }
+
+            # If there's an active game, include its ID
+            if active_game:
+                response_data["active_game_id"] = active_game['game_id']
         return jsonify({
             "message": "User registered successfully",
             "user_id": user_id
@@ -149,14 +170,32 @@ def login():
             # Log the session for debugging
             print(f"Login successful, session contains: {session}")
 
-            # Explicitly set cookie headers for better cross-origin support
-            response = jsonify({
+            # NEW: Check if this user has an active game
+            active_game = get_active_game_state(user['user_id'])
+
+            # If an active game exists, load it into the session
+            if active_game:
+                session['game_state'] = active_game
+                logging.info(
+                    f"Loaded active game {active_game['game_id']} for user {user['user_id']}"
+                )
+
+            # Add active game info to the response
+            response_data = {
                 "success": True,
                 "token": token,
                 "user_id": user['user_id'],
                 "username": user['username'],
-                "email": user['email']
-            })
+                "email": user['email'],
+                "has_active_game": active_game is not None
+            }
+
+            # If there's an active game, include its ID
+            if active_game:
+                response_data["active_game_id"] = active_game['game_id']
+
+            # Explicitly set cookie headers for better cross-origin support
+            response = jsonify(response_data)
             return response
     except Exception as e:
         print("Error in login:", str(e))

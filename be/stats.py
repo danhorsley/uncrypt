@@ -8,6 +8,7 @@ from .login import validate_token
 # Create a blueprint for the stats routes
 stats_bp = Blueprint('stats', __name__)
 
+
 @stats_bp.route('/user_stats', methods=['GET'])
 def get_user_stats():
     # Get user_id from token validation or session
@@ -33,10 +34,11 @@ def get_user_stats():
             cursor = conn.cursor()
 
             # Get the user's stats from user_stats table
-            cursor.execute('''
+            cursor.execute(
+                '''
                 SELECT * FROM user_stats
                 WHERE user_id = ?
-            ''', (user_id,))
+            ''', (user_id, ))
 
             stats_row = cursor.fetchone()
 
@@ -67,7 +69,8 @@ def get_user_stats():
             today = datetime.datetime.now().date()
             start_of_week = today - datetime.timedelta(days=today.weekday())
 
-            cursor.execute('''
+            cursor.execute(
+                '''
                 SELECT SUM(score) as weekly_score, COUNT(*) as games_count
                 FROM game_scores
                 WHERE user_id = ? 
@@ -76,8 +79,12 @@ def get_user_stats():
 
             weekly_data = cursor.fetchone()
 
-            weekly_score = weekly_data['weekly_score'] if weekly_data and weekly_data['weekly_score'] is not None else 0
-            weekly_games = weekly_data['games_count'] if weekly_data and weekly_data['games_count'] is not None else 0
+            weekly_score = weekly_data[
+                'weekly_score'] if weekly_data and weekly_data[
+                    'weekly_score'] is not None else 0
+            weekly_games = weekly_data[
+                'games_count'] if weekly_data and weekly_data[
+                    'games_count'] is not None else 0
 
             # Prepare weekly stats
             weekly_stats = {
@@ -86,13 +93,14 @@ def get_user_stats():
             }
 
             # Get top 5 scores for personal stats
-            cursor.execute('''
+            cursor.execute(
+                '''
                 SELECT score, difficulty, time_taken, created_at 
                 FROM game_scores
                 WHERE user_id = ? AND completed = 1
                 ORDER BY score DESC
                 LIMIT 5
-            ''', (user_id,))
+            ''', (user_id, ))
 
             top_scores = []
             for row in cursor.fetchall():
@@ -105,18 +113,29 @@ def get_user_stats():
 
             # Prepare the response
             response = {
-                "user_id": user_id,
-                "current_streak": stats_dict.get('current_streak', 0),
-                "max_streak": stats_dict.get('max_streak', 0),
-                "current_noloss_streak": stats_dict.get('current_noloss_streak', 0),
-                "max_noloss_streak": stats_dict.get('max_noloss_streak', 0),
-                "total_games_played": stats_dict.get('total_games_played', 0),
-                "cumulative_score": stats_dict.get('cumulative_score', 0),
-                "highest_weekly_score": stats_dict.get('highest_weekly_score', 
-                                              stats_dict.get('highest_monthly_score', 0)),
-                "last_played_date": stats_dict.get('last_played_date'),
-                "weekly_stats": weekly_stats,
-                "top_scores": top_scores
+                "user_id":
+                user_id,
+                "current_streak":
+                stats_dict.get('current_streak', 0),
+                "max_streak":
+                stats_dict.get('max_streak', 0),
+                "current_noloss_streak":
+                stats_dict.get('current_noloss_streak', 0),
+                "max_noloss_streak":
+                stats_dict.get('max_noloss_streak', 0),
+                "total_games_played":
+                stats_dict.get('total_games_played', 0),
+                "cumulative_score":
+                stats_dict.get('cumulative_score', 0),
+                "highest_weekly_score":
+                stats_dict.get('highest_weekly_score',
+                               stats_dict.get('highest_monthly_score', 0)),
+                "last_played_date":
+                stats_dict.get('last_played_date'),
+                "weekly_stats":
+                weekly_stats,
+                "top_scores":
+                top_scores
             }
 
             return jsonify(response)
@@ -124,6 +143,7 @@ def get_user_stats():
     except Exception as e:
         logging.error(f"Error getting user stats: {e}")
         return jsonify({"error": "Failed to retrieve user statistics"}), 500
+
 
 @stats_bp.route('/leaderboard', methods=['GET'])
 def get_leaderboard():
@@ -138,7 +158,8 @@ def get_leaderboard():
         page = 1
 
     try:
-        per_page = min(int(request.args.get('per_page', 10)), 50)  # Limit to 50 max
+        per_page = min(int(request.args.get('per_page', 10)),
+                       50)  # Limit to 50 max
     except (ValueError, TypeError):
         # If per_page isn't a valid number, default to 10
         per_page = 10
@@ -174,7 +195,8 @@ def get_leaderboard():
             if period == 'weekly':
                 # Get start of current week (Monday)
                 today = datetime.datetime.now().date()
-                start_of_week = today - datetime.timedelta(days=today.weekday())
+                start_of_week = today - datetime.timedelta(
+                    days=today.weekday())
                 time_filter = "AND date(g.created_at) >= date(?)"
                 time_filter_params = [start_of_week.isoformat()]
 
@@ -203,7 +225,9 @@ def get_leaderboard():
                     ORDER BY total_score DESC
                     LIMIT ? OFFSET ?
                 '''
-                top_entries_params = [user_id] + time_filter_params + [per_page, offset]
+                top_entries_params = [user_id] + time_filter_params + [
+                    per_page, offset
+                ]
             else:
                 # For all-time, use the user_stats table which has precomputed values
                 top_entries_query = '''
@@ -230,18 +254,26 @@ def get_leaderboard():
             top_entries = []
             for row in cursor.fetchall():
                 top_entries.append({
-                    "rank": row['rank'],
-                    "username": row['username'],
-                    "user_id": row['user_id'],
-                    "score": row['total_score'],
-                    "games_played": row['games_played'],
-                    "avg_score": round(row['avg_score'], 1) if row['avg_score'] else 0,
-                    "is_current_user": bool(row['is_current_user'])
+                    "rank":
+                    row['rank'],
+                    "username":
+                    row['username'],
+                    "user_id":
+                    row['user_id'],
+                    "score":
+                    row['total_score'],
+                    "games_played":
+                    row['games_played'],
+                    "avg_score":
+                    round(row['avg_score'], 1) if row['avg_score'] else 0,
+                    "is_current_user":
+                    bool(row['is_current_user'])
                 })
 
             # Get current user entry if authenticated and not in top entries
             current_user_entry = None
-            if user_id and not any(entry['is_current_user'] for entry in top_entries):
+            if user_id and not any(entry['is_current_user']
+                                   for entry in top_entries):
                 if period == 'weekly':
                     user_query = '''
                         SELECT 
@@ -286,13 +318,21 @@ def get_leaderboard():
 
                 if user_row:
                     current_user_entry = {
-                        "rank": user_row['rank'],
-                        "username": user_row['username'],
-                        "user_id": user_row['user_id'],
-                        "score": user_row['total_score'],
-                        "games_played": user_row['games_played'],
-                        "avg_score": round(user_row['avg_score'], 1) if user_row['avg_score'] else 0,
-                        "is_current_user": True
+                        "rank":
+                        user_row['rank'],
+                        "username":
+                        user_row['username'],
+                        "user_id":
+                        user_row['user_id'],
+                        "score":
+                        user_row['total_score'],
+                        "games_played":
+                        user_row['games_played'],
+                        "avg_score":
+                        round(user_row['avg_score'], 1)
+                        if user_row['avg_score'] else 0,
+                        "is_current_user":
+                        True
                     }
 
             # Get total number of entries for pagination info
@@ -317,10 +357,14 @@ def get_leaderboard():
 
             # Prepare pagination info
             pagination = {
-                "current_page": page,
-                "total_pages": (total_users + per_page - 1) // per_page if total_users > 0 else 1,
-                "total_entries": total_users,
-                "per_page": per_page
+                "current_page":
+                page,
+                "total_pages": (total_users + per_page - 1) //
+                per_page if total_users > 0 else 1,
+                "total_entries":
+                total_users,
+                "per_page":
+                per_page
             }
 
             # Return results in the new format
@@ -337,10 +381,12 @@ def get_leaderboard():
 
         # Update this part in stats.py to fix potential streak leaderboard issues
 
+
 @stats_bp.route('/streak_leaderboard', methods=['GET'])
 def get_streak_leaderboard():
     # Add debugging
-    logging.info(f"Streak leaderboard request received with params: {request.args}")
+    logging.info(
+        f"Streak leaderboard request received with params: {request.args}")
 
     # Extract parameters with defaults
     streak_type = request.args.get('type', 'win')  # 'win' or 'noloss'
@@ -350,19 +396,26 @@ def get_streak_leaderboard():
     try:
         page = int(request.args.get('page', 1))
     except (ValueError, TypeError):
-        logging.warning(f"Invalid page parameter: {request.args.get('page')}, defaulting to 1")
+        logging.warning(
+            f"Invalid page parameter: {request.args.get('page')}, defaulting to 1"
+        )
         page = 1
 
     try:
-        per_page = min(int(request.args.get('per_page', 10)), 50)  # Limit to 50 max
+        per_page = min(int(request.args.get('per_page', 10)),
+                       50)  # Limit to 50 max
     except (ValueError, TypeError):
-        logging.warning(f"Invalid per_page parameter: {request.args.get('per_page')}, defaulting to 10")
+        logging.warning(
+            f"Invalid per_page parameter: {request.args.get('per_page')}, defaulting to 10"
+        )
         per_page = 10
 
     # Calculate pagination offset
     offset = (page - 1) * per_page
 
-    logging.info(f"Processing streak request with: type={streak_type}, period={period}, page={page}, per_page={per_page}")
+    logging.info(
+        f"Processing streak request with: type={streak_type}, period={period}, page={page}, per_page={per_page}"
+    )
 
     try:
         with get_db_connection() as conn:
@@ -435,7 +488,8 @@ def get_streak_leaderboard():
 
             # Get current user entry if authenticated and not in top entries
             current_user_entry = None
-            if user_id and not any(entry['is_current_user'] for entry in top_entries):
+            if user_id and not any(entry['is_current_user']
+                                   for entry in top_entries):
                 user_query = f'''
                     WITH RankedUsers AS (
                         SELECT 
@@ -464,9 +518,12 @@ def get_streak_leaderboard():
 
                     # Only include last_active for current streaks
                     if period == 'current':
-                        current_user_entry["last_active"] = user_row['last_played_date']
+                        current_user_entry["last_active"] = user_row[
+                            'last_played_date']
 
-                    logging.info(f"Added current user entry with rank {user_row['rank']}")
+                    logging.info(
+                        f"Added current user entry with rank {user_row['rank']}"
+                    )
                 else:
                     logging.info(f"User {user_id} has no streak data")
 
@@ -483,24 +540,32 @@ def get_streak_leaderboard():
 
             # Prepare pagination info
             pagination = {
-                "current_page": page,
-                "total_pages": (total_users + per_page - 1) // per_page if total_users > 0 else 1,
-                "total_entries": total_users,
-                "per_page": per_page
+                "current_page":
+                page,
+                "total_pages": (total_users + per_page - 1) //
+                per_page if total_users > 0 else 1,
+                "total_entries":
+                total_users,
+                "per_page":
+                per_page
             }
 
             # Return results in the new format
             result = {
-                "entries": top_entries,  # Keep original name for streak endpoints
+                "entries":
+                top_entries,  # Keep original name for streak endpoints
                 "currentUserEntry": current_user_entry,
                 "pagination": pagination,
                 "streak_type": streak_type,
                 "period": period
             }
 
-            logging.info(f"Returning streak data with {len(top_entries)} entries")
+            logging.info(
+                f"Returning streak data with {len(top_entries)} entries")
             return jsonify(result)
 
     except Exception as e:
         logging.error(f"Error fetching streak leaderboard: {e}")
-        return jsonify({"error": f"Failed to retrieve streak leaderboard data: {str(e)}"}), 500
+        return jsonify(
+            {"error":
+             f"Failed to retrieve streak leaderboard data: {str(e)}"}), 500
